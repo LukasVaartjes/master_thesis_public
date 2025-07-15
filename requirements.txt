@@ -1,0 +1,25 @@
+# Core libraries
+torchtorchvision 
+torchaudio   
+
+# Data handling
+numpy
+pandas
+
+# Plotting and progress bar
+matplotlib
+tqdm
+
+# 3D file and point cloud support
+plyfile
+open3d
+openpyxl
+sklearn
+cv2
+pyntcloud
+os
+glob
+
+# If specific cuda installment is required, install manually and remove from this txt file
+# Instead, install it separately like:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
