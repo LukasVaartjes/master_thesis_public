@@ -5,6 +5,9 @@ torchaudio
 # Data handling
 numpy
 pandas
+random
+shutil
+PIL
 
 # Plotting and progress bar
 matplotlib
