@@ -1,0 +1,8 @@
+Surface Roughness Calculations for 47_pc.ply:
+Ra (Mean Roughness): 0.015739 mm
+Rq (Root Mean Square Roughness): 0.019435 mm
+Rz (Max Height Difference): 0.140556 mm
+Mean Height: -0.090330 mm
+Min Height: -0.153877 mm
+Max Height: -0.013321 mm
+Number of Points After Filtering: 45834

@@ -1,0 +1,8 @@
+Surface Roughness Calculations for 60_pc.ply:
+Ra (Mean Roughness): 0.018185 mm
+Rq (Root Mean Square Roughness): 0.023184 mm
+Rz (Max Height Difference): 0.230037 mm
+Mean Height: -0.163234 mm
+Min Height: -0.239646 mm
+Max Height: -0.009610 mm
+Number of Points After Filtering: 38131
