@@ -38,7 +38,9 @@ class ImageDataset(Dataset):
         if not self.image_files:
             raise ValueError(f"no valid image files were found in '{self.png_data_path}' that match entries in '{description_data}' after filtering")
 
-        self.label_cols = ['label'] 
+        # FOr now 1 label, later add the rest
+        # self.label_cols = ['label'] 
+        self.label_cols = ['Good_layer', 'Ditch', 'Crater', 'Waves']
         
         missing_label_cols = [col for col in self.label_cols if col not in self.metadata.columns]
         if missing_label_cols:

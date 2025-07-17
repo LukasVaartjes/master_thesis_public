@@ -20,11 +20,11 @@ TRAIN_DATA_DIR = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/train"
 TRAIN_DATA_DESCRIPTION_FILE = f"{TRAIN_DATA_DIR}/train_labels.xlsx"
 VAL_IMAGE_DIR = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/validate"
 VAL_DESC = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
-EPOCHS = 150
+EPOCHS = 15
 BATCH_SIZE = 32
 LR = 0.001
 IMAGE_SIZE = (150, 150)
-NUM_LABELS = 1
+NUM_LABELS = 4
 EXTRA_FEATURES = 0
 
 
@@ -102,9 +102,11 @@ def train_image_model():
                 correct_predictions_per_label += (preds == labels).sum(dim=0)
                 total_predictions_per_label += labels.size(0)
 
+                
+
                 all_labels_correct += (preds == labels).all(dim=1).sum().item()
                 total_samples += labels.size(0)
-        
+                
         # Calculate average validation loss
         avg_validation_loss = validation_loss / len(val_dataloader)
 

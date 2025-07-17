@@ -22,8 +22,6 @@ MODEL_PATH = "dataset\saved_models/greyscale/"
 NUM_LABELS = 1
 EXTRA_FEATURE = 0
 
-
-
 def classify_images(MODEL_PATH, epoch, MODEL_NAME, image_size):
     IMAGE_DIR = f"{DATASET_DIR}/split_output/test"
     DESCRIPTION_FILE = f"{DATASET_DIR}/split_output/test/test_labels.xlsx"

@@ -1,8 +1,3 @@
-# File to split a dataset consisting # of greyscale images and their corresponding point cloud files. 
-# Including functions to calculate pixel statistics for images and to split the dataset
-# into training, validation, and test sets and store Excel description file.
-# Use requirement to install required packages
-
 import os
 import shutil
 import random
@@ -16,7 +11,7 @@ TRAIN_RATIO = 0.7
 VALIDATE_RATIO = 0.2
 GREYSCALE_DATA_FOLDER = f"{DATASET_DIR}greyscale"
 POINTCLOUD_DATA_FOLDER = f"{DATASET_DIR}pointcloud"
-DESCRIPTION_FILE  = f"{DATASET_DIR}description_greyscale.xlsm"
+DESCRIPTION_FILE = f"{DATASET_DIR}description_greyscale.xlsm"
 OUTPUT_PATH = f"{DATASET_DIR}split_output"
 
 def get_image_pixel_stats(filepath):
@@ -66,40 +61,50 @@ def split_dataset():
     df.dropna(subset=['Original_Image_ID', 'Segment_ID_In_Original'], inplace=True)
     if len(df) < initial_rows_before_id_drop:
         print(f"removed {initial_rows_before_id_drop - len(df)} rows due to missing or non-numeric Original_Image_ID or Segment_ID_In_Original header")
-    
+
     df['Original_Image_ID'] = df['Original_Image_ID'].astype(np.int64)
     df['Segment_ID_In_Original'] = df['Segment_ID_In_Original'].astype(np.int64)
 
     df['ply_file_name'] = df.apply(
-        lambda row: f"{int(row['Original_Image_ID']):02d}_box_{int(row['Segment_ID_In_Original']):d}.ply", 
+        lambda row: f"{int(row['Original_Image_ID']):02d}_box_{int(row['Segment_ID_In_Original']):d}.ply",
         axis=1
     )
 
-    df_processed = df[['Original_Image_ID', 'Segment_ID_In_Original', 'ply_file_name']].copy()
-    df_processed['label'] = ""
+    # Ensure these columns exist in the DataFrame before proceeding
+    required_label_cols = ['Good_layer', 'Crater', 'Ditch', 'Waves']
+    for col in required_label_cols:
+        if col not in df.columns:
+            print(f"Error: Required label column '{col}' not found in the Excel file.")
+            return
+
+    df_processed = df[['Original_Image_ID', 'Segment_ID_In_Original', 'ply_file_name'] + required_label_cols].copy()
 
     all_png_files_in_folder = set(os.listdir(GREYSCALE_DATA_FOLDER))
     all_ply_files_in_folder = set(os.listdir(POINTCLOUD_DATA_FOLDER))
 
     valid_pairs_with_labels = []
-    
+
     for index, row in df_processed.iterrows():
         png_file = f"{int(row['Original_Image_ID']):02d}_box_{int(row['Segment_ID_In_Original']):d}.png"
         ply_file = row['ply_file_name']
-        
+
         png_exists = png_file in all_png_files_in_folder
         ply_exists = ply_file in all_ply_files_in_folder
 
         if not png_exists or not ply_exists:
-            continue 
+            continue
 
         valid_pairs_with_labels.append({
             'png_file': png_file,
             'ply_file': ply_file,
-            'label': row['label'] 
+            'Good_layer': row['Good_layer'],
+            'Ditch': row['Ditch'],
+            'Crater': row['Crater'],
+            'Waves': row['Waves']
         })
-    
+
     if not valid_pairs_with_labels:
+        print("No valid image and point cloud file pairs found matching entries in the description file.")
         return
 
     random.shuffle(valid_pairs_with_labels)
@@ -110,7 +115,7 @@ def split_dataset():
     test_size = total_files - train_size - validate_size
 
     if test_size < 0:
-        print(f"train_ratio ({TRAIN_RATIO}) and validate_ratio ({VALIDATE_RATIO}) greater than 1")
+        print(f"train_ratio ({TRAIN_RATIO}) and validate_ratio ({VALIDATE_RATIO}) sum to more than 1")
         return
 
     train_pairs = valid_pairs_with_labels[:train_size]
@@ -135,7 +140,6 @@ def split_dataset():
     for file_pair in train_pairs + validate_pairs + test_pairs:
         png_file = file_pair['png_file']
         ply_file = file_pair['ply_file']
-        label = file_pair['label']
 
         src_png_path = os.path.join(GREYSCALE_DATA_FOLDER, png_file)
         src_ply_path = os.path.join(POINTCLOUD_DATA_FOLDER, ply_file)
@@ -146,12 +150,15 @@ def split_dataset():
             continue
 
         file_data = {
-            'File_Name_PNG': png_file, 
-            'File_Name_PLY': ply_file, 
-            'label': label,
+            'File_Name_PNG': png_file,
+            'File_Name_PLY': ply_file,
             'Min_Pixel_Value': min_p,
             'Max_Pixel_Value': max_p,
-            'Pixel_Value_Difference': diff_p
+            'Pixel_Value_Difference': diff_p,
+            'Good_layer': file_pair['Good_layer'],
+            'Ditch': file_pair['Ditch'],
+            'Crater': file_pair['Crater'],
+            'Waves': file_pair['Waves']
         }
 
         if file_pair in train_pairs:
@@ -190,18 +197,18 @@ def split_dataset():
 def create_empty_description_file():
     """
     Creates an empty Excel file named 'description_greyscale.xlsm' at the predefined
-    DESCRIPTION_FILE path. This file is used as a template for users 
+    DESCRIPTION_FILE path. This file is used as a template for users
     It includes a set of required columns that the dataset splitting logic uses
     """
-    required_columns = ["Original_Image_ID", "Segment_ID_In_Original", 
+    required_columns = ["Original_Image_ID", "Segment_ID_In_Original",
                         "Row_Min", "Col_Min", "Row_Max", "Col_Max", "Segment_Width",
                         "Segment_Height", "Min_Pixel_Value", "Max_Pixel_Value",
-                        "Pixel_Value_Difference", "Label (0 = no defect, 1 = defect)", "Perfect layer", "Ditch", "Crater", "Waves"]
+                        "Pixel_Value_Difference", "Good_layer", "Ditch", "Crater", "Waves"]
     empty_df = pd.DataFrame(columns=required_columns)
     try:
         empty_df.to_excel(DESCRIPTION_FILE, index=False)
         print(f"Created empty description file at: {DESCRIPTION_FILE}")
-        
+
     except Exception as e:
         print(f"Error creating empty description file at {DESCRIPTION_FILE}: {e}")
 
@@ -209,7 +216,7 @@ if __name__ == "__main__":
     os.makedirs(os.path.dirname(DESCRIPTION_FILE), exist_ok=True)
     if not os.path.exists(DESCRIPTION_FILE):
         create_empty_description_file()
-        print("\nNo description file found")
+        print("\nNo description file found. An empty description file has been created. Please populate it with your data.")
         exit()
 
     os.makedirs(OUTPUT_PATH, exist_ok=True)

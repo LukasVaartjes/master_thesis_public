@@ -463,7 +463,10 @@ def fixed_box_visualize(pcd_df, pc_id, full_img, x_offset_pc, y_offset_pc, pre_r
                 "Min_Pixel_Value": min_pixel_value,
                 "Max_Pixel_Value": max_pixel_value,
                 "Pixel_Value_Difference": pixel_value_difference,
-                "Label (0 = no defect, 1 = defect)": "" 
+                "Good_layer": "" ,
+                "Ditch": "" ,
+                "Crater": "" ,
+                "Waves": "" 
             })
 
         else:
