@@ -1,5 +1,5 @@
 # Core libraries
-torchtorchvision 
+torchvision
 torchaudio   
 
 # Data handling
@@ -22,6 +22,7 @@ cv2
 pyntcloud
 os
 glob
+
 
 # If specific cuda installment is required, install manually and remove from this txt file
 # Instead, install it separately like:

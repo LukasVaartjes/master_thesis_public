@@ -17,7 +17,7 @@ VALIDATE_RATIO = 0.2
 GREYSCALE_DATA_FOLDER = f"{DATASET_DIR}greyscale"
 POINTCLOUD_DATA_FOLDER = f"{DATASET_DIR}pointcloud"
 DESCRIPTION_FILE  = f"{DATASET_DIR}description_greyscale.xlsm"
-OUTPUT_PATH = f"{DATASET_DIR}split_output/test"
+OUTPUT_PATH = f"{DATASET_DIR}split_output"
 
 def get_image_pixel_stats(filepath):
     """
