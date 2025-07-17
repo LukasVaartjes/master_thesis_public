@@ -23,23 +23,21 @@ class ImageDataset(Dataset):
 
         self.metadata = pd.read_excel(description_data)
 
-        self.image_files = self.metadata['File_Name_PNG'].tolist()
-
-        self.png_data_path = os.path.join(self.image_dir, 'png') 
+        self.ply_data_path = os.path.join(self.pointcloud_dir, 'ply')
         
-        if not os.path.isdir(self.png_data_path):
-            raise FileNotFoundError(f"png dir not found at: '{self.png_data_path}'")
+        if not os.path.isdir(self.ply_data_path):
+            raise FileNotFoundError(f"ply directory not found at: '{self.ply_data_path}'")
 
-        existing_image_files = set(os.listdir(self.png_data_path)) 
+        # get all existing .ply files in the ply dir
+        existing_pc_files = {f for f in os.listdir(self.ply_data_path) if f.endswith('.ply')}
         
-        self.metadata = self.metadata[self.metadata['File_Name_PNG'].isin(existing_image_files)].reset_index(drop=True)
+        # only include entries where the PLY file exists in the ply subdirectory
+        self.metadata = self.metadata[self.metadata['File_Name_PLY'].isin(existing_pc_files)].reset_index(drop=True)
         self.image_files = self.metadata['File_Name_PNG'].tolist() 
 
         if not self.image_files:
             raise ValueError(f"no valid image files were found in '{self.png_data_path}' that match entries in '{description_data}' after filtering")
 
-        # FOr now 1 label, later add the rest
-        # self.label_cols = ['label'] 
         self.label_cols = ['Good_layer', 'Ditch', 'Crater', 'Waves']
         
         missing_label_cols = [col for col in self.label_cols if col not in self.metadata.columns]

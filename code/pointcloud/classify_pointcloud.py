@@ -2,8 +2,8 @@ import os
 import json
 import torch
 from torch.utils.data import DataLoader
-from dataset_2D import ImageDataset
-from cnn_model_2d import SimpleImageCNN
+from dataset_pointcloud import PointCloudDataset
+from pointnet_plus_plus import PointNetPlusPlusClassifier
 import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix, classification_report, f1_score, roc_curve, auc
 import numpy as np
@@ -16,26 +16,29 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 
 results = []
-MODEL_NAME = "greyscale"
-DATASET_DIR = "./dataset"
-MODEL_PATH = "dataset\saved_models/greyscale/"
+MODEL_NAME = "pointcloud"
+DATASET_DIR = "./dataset/"
+SAVE_MODEL_PATH = "./dataset/saved_models"
+SPLIT_OUTPUT_DIR = "split_output"
+MODEL_PATH = f"{DATASET_DIR}/saved_models/{MODEL_NAME}/"
 NUM_LABELS = 4
 EXTRA_FEATURE = 0
+NUM_POINTS = 2000
 
-def classify_images(MODEL_PATH, epoch, MODEL_NAME, image_size):
-    IMAGE_DIR = f"{DATASET_DIR}/split_output/test"
-    DESCRIPTION_FILE = f"{DATASET_DIR}/split_output/test/test_labels.xlsx"
+def classify_point_clouds(epoch):
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    dataset = ImageDataset(
-        image_dir=IMAGE_DIR,
-        description_data=DESCRIPTION_FILE,
-        target_size=image_size if image_size else (128, 128)
+    dataset = PointCloudDataset(
+        pointcloud_dir=f"{DATASET_DIR}/split_output/test",
+        description_data=f"{DATASET_DIR}/split_output/test/test_labels.xlsx",
+        num_points=NUM_POINTS
     )
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+    print(f"Loaded {len(dataset)} samples for classification.")
 
-    model = SimpleImageCNN(num_labels=NUM_LABELS, extra_features_dim=EXTRA_FEATURE).to(device)
+    model = PointNetPlusPlusClassifier(num_classes=NUM_LABELS, extra_features_dim=EXTRA_FEATURE).to(device)
     model.load_state_dict(torch.load(MODEL_PATH, map_location=device, weights_only=True))
     model.eval()
 
@@ -47,17 +50,17 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME, image_size):
     file_results_for_excel = []
     
     with torch.no_grad():
-        for i, (images, extra_features, true_labels, img_file) in enumerate(dataloader):
+        for i, (points, extra_features, true_labels, pc_file) in enumerate(dataloader):
 
-            if isinstance(img_file, (tuple, list)):
-                img_file = img_file[0]
-            img_file = str(img_file)
+            if isinstance(pc_file, (tuple, list)):
+                pc_file = pc_file[0]
+            pc_file = str(pc_file)
 
-            images = images.to(device)
+            points = points.to(device)
             extra_features = extra_features.to(device)
             true_labels = true_labels.to(device)
 
-            output = model(images, extra_features)
+            output = model(points, extra_features)
 
             probs = torch.sigmoid(output).cpu().detach().numpy()[0]
             
@@ -65,11 +68,9 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME, image_size):
             
             final_pred_binary_labels = np.zeros_like(initial_binary_predictions, dtype=int)
 
-            # Good layer does not occur with other defects, so apply exlusive
             try:
                 good_layer_idx = dataset.label_cols.index("Good_layer")
             except ValueError:
-                print("good layer label not found in column, skip exclusive rule application.")
                 final_pred_binary_labels = initial_binary_predictions
             else:
                 any_specific_defect_predicted = False
@@ -85,7 +86,7 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME, image_size):
                     if initial_binary_predictions[good_layer_idx] == 1:
                         final_pred_binary_labels[good_layer_idx] = 1
                     else:
-                        final_pred_binary_labels[good_layer_idx] = 1 
+                        final_pred_binary_labels[good_layer_idx] = 1
                         
             pred_binary_labels = final_pred_binary_labels
 
@@ -94,8 +95,8 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME, image_size):
             all_predicted_binary_labels.append(pred_binary_labels)
 
             file_results_for_excel.append({
-                'Filename': img_file,
-                'True_Label': int(true_labels.cpu().numpy().item()),
+                'Filename': pc_file,
+                'True_Label': true_labels.cpu().numpy()[0].astype(int), 
                 'Predicted_Label': pred_binary_labels, 
                 'Predicted_Probability': probs 
             })
@@ -108,8 +109,8 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME, image_size):
             color_start = "\033[92m" if is_correct_instance else "\033[91m"
             color_end = "\033[0m"
 
-            print(f"Nr: {counter} {img_file}: Probabilities -> {prob_str}")
-            print(color_start + f"{img_file}: \n Predicted: [{pred_label_str}], \n True      : [{true_label_str}]" + color_end)
+            print(f"Nr: {counter} {pc_file}: Probabilities -> {prob_str}")
+            print(color_start + f"{pc_file}: \n Predicted: [{pred_label_str}], \n True       : [{true_label_str}]" + color_end)
             counter += 1
             
     all_true_labels = np.array(all_true_labels)
@@ -131,7 +132,6 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME, image_size):
         per_label_accuracy.append(acc_lbl)
         print(f"   {label_name}: Accuracy = {acc_lbl:.2f}%, F1 = {f1_lbl:.4f}")
         
-        #COnfusion matrix stuff
         cm = confusion_matrix(true_for_label, pred_for_label)
         plt.figure(figsize=(6, 5))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False,
@@ -140,7 +140,9 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME, image_size):
         plt.title(f'Confusion Matrix for {label_name} (Epoch {epoch})')
         plt.xlabel('Predicted Label')
         plt.ylabel('True Label')
-        cm_output_path = f"{DATASET_DIR}/saved_models/confusion_matrix_{label_name}_epoch_{epoch}.png"
+        cm_output_dir = Path(f"{DATASET_DIR}/saved_models/{MODEL_NAME}/confusion_matrices/")
+        cm_output_dir.mkdir(parents=True, exist_ok=True)
+        cm_output_path = cm_output_dir / f"confusion_matrix_{label_name}_epoch_{epoch}.png"
         plt.savefig(cm_output_path)
         plt.close()
         print(f"Confusion matrix for {label_name} saved to {cm_output_path}")
@@ -170,10 +172,10 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME, image_size):
         f.write(f"Instance (Exact Match) Accuracy: {instance_accuracy:.2f}%\n")
         f.write("Per-Label Metrics:\n")
         for label_name, acc, f1 in zip(dataset.label_cols, per_label_accuracy, per_label_f1):
-            f.write(f"   {label_name}: Accuracy = {acc:.2f}%, F1 = {f1:.4f}\n")
+            f.write(f"    {label_name}: Accuracy = {acc:.2f}%, F1 = {f1:.4f}\n")
         f.write("ROC AUC for each label:\n")
         for label_name, data in roc_data.items():
-            f.write(f"   {label_name}: AUC = {data['auc']:.4f}\n")
+            f.write(f"    {label_name}: AUC = {data['auc']:.4f}\n")
 
     print(f"Evaluation results saved to {txt_output_path}")
 
@@ -203,21 +205,15 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME, image_size):
 
 
 if __name__ == "__main__":
-    
     all_epochs_roc_data = [] 
 
-    
-    IMAGE_SIZE = (150,150)
-
     for epoch in range(0, 151, 10):
-        MODEL_PATH = f"dataset/saved_models/{MODEL_NAME}/model_epoch_{epoch}.pth"
-        
         if not os.path.exists(MODEL_PATH):
             continue
 
         print(f"\nProcessing model at epoch {epoch}...")
         
-        roc_data_for_epoch = classify_images(MODEL_PATH, epoch, MODEL_NAME, image_size=IMAGE_SIZE)
+        roc_data_for_epoch = classify_point_clouds(MODEL_PATH, epoch, MODEL_NAME)
         all_epochs_roc_data.append({'epoch': epoch, 'roc_data': roc_data_for_epoch})
 
     if all_epochs_roc_data:
