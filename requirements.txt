@@ -1,29 +1,35 @@
-# Core libraries
+# Important for running models
+torch
 torchvision
-torchaudio   
+torchaudio
 
-# Data handling
+# Data handling/loading
 numpy
 pandas
 random
 shutil
 PIL
+openpyxl 
+cv2 
+json 
+pathlib 
 
-# Plotting and progress bar
+# For plotting
 matplotlib
 tqdm
+seaborn 
 
-# 3D file and point cloud support
+# To work with 3D file and point cloud 
 plyfile
 open3d
-openpyxl
 sklearn
-cv2
 pyntcloud
+
+# Utility
 os
 glob
-
 
 # If specific cuda installment is required, install manually and remove from this txt file
 # Instead, install it separately like:
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# I had to do it like this in order to run it on my GPU. 
