@@ -1,5 +1,12 @@
+# Code to run classification for a pytorch based image classification model Pointnet++. 
+# It can use single and multilabel data. 
+# It automatically loads the data, models and automates the classification run
+# Metrics such as F1-score, accuracy and ROC AUC are collected and plotted in 
+# their corresponding graphs. Confusion matrixes are generated, and all predictions
+# are saved in an excel sheet for easy reference later on.
+
+
 import os
-import json
 import torch
 from torch.utils.data import DataLoader
 from dataset_pointcloud import PointCloudDataset
@@ -11,10 +18,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
-
 import warnings
+
 warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 
+# Global variables
 results = []
 MODEL_NAME = "pointcloud"
 DATASET_DIR = "./dataset/"
@@ -26,10 +34,31 @@ EXTRA_FEATURE = 0
 NUM_POINTS = 2000
 
 def classify_point_clouds(epoch):
-    
+    """
+    Classifies images using a pre-trained model and evaluating the performance
+
+    This function does:
+    1. Sets up the test DataLoader
+    2. Load the pre-trained model
+    3. Iterates through the test dataset and do clasification 
+    4. Applies a rule for "Good_layer" predictions to ensure exclusivity with other defect labels
+    5. Collects true labels, predicted probabilities, and final binary predictions
+    6. Calculates and prints per-label F1-scores and accuracy
+    7. Generates confusion matrices
+    8. Calculates and prints overall mean label accuracy, mean label F1 score,
+       and instance-level accuracy.
+    9. Computes ROC curve data 
+    10. Saves metrics to text file
+    11. Exports predictions true labels and probabilities to Excel file for alls amples
+
+    Args:
+        epoch (int): The epoch number of the loaded model
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
+    # Initialize dataset for the test set
+    # set batch size tp 1 for individual image processing
     dataset = PointCloudDataset(
         pointcloud_dir=f"{DATASET_DIR}/split_output/test",
         description_data=f"{DATASET_DIR}/split_output/test/test_labels.xlsx",
@@ -38,17 +67,19 @@ def classify_point_clouds(epoch):
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
     print(f"Loaded {len(dataset)} samples for classification.")
 
+    # Initialize model with the number of labels and extra features, then load the pre-trained weights
     model = PointNetPlusPlusClassifier(num_classes=NUM_LABELS, extra_features_dim=EXTRA_FEATURE).to(device)
     model.load_state_dict(torch.load(MODEL_PATH, map_location=device, weights_only=True))
     model.eval()
 
+    # Lists to store all true labels, predicted probabilities, and binary predictions
     all_true_labels = []
     all_predicted_probs = []
     all_predicted_binary_labels = []
-
     counter = 1
     file_results_for_excel = []
     
+    # Disable gradient computation for inference to save memory
     with torch.no_grad():
         for i, (points, extra_features, true_labels, pc_file) in enumerate(dataloader):
 
@@ -56,14 +87,20 @@ def classify_point_clouds(epoch):
                 pc_file = pc_file[0]
             pc_file = str(pc_file)
 
+            # Perform forward pass
             points = points.to(device)
             extra_features = extra_features.to(device)
             true_labels = true_labels.to(device)
             output = model(points, extra_features)
+            # Apply sigmoid to convert logits to probabilities
             probs = torch.sigmoid(output).cpu().detach().numpy()[0]
             initial_binary_predictions = (probs > 0.5).astype(int)
+            # Initialize binary prediction, will be adjusted by exclusive rule later on
             final_pred_binary_labels = np.zeros_like(initial_binary_predictions, dtype=int)
 
+            # Apply exclusive rule that good_layer does not occur with other defects
+            # If any specific defect is predicted, good layer is 0, otherwise it is 1
+            # or is set to 1 as a fallback if nothing else was predicted.
             try:
                 good_layer_idx = dataset.label_cols.index("Good_layer")
             except ValueError:
@@ -90,6 +127,7 @@ def classify_point_clouds(epoch):
             all_predicted_probs.append(probs)
             all_predicted_binary_labels.append(pred_binary_labels)
 
+            # Store results for Excel
             file_results_for_excel.append({
                 'Filename': pc_file,
                 'True_Label': true_labels.cpu().numpy()[0].astype(int), 
@@ -97,6 +135,7 @@ def classify_point_clouds(epoch):
                 'Predicted_Probability': probs 
             })
             
+            # labels and probabilities console output
             true_label_str = ' '.join(f"{label}:{int(val)}" for label, val in zip(dataset.label_cols, true_labels.cpu().numpy()[0]))
             pred_label_str = ' '.join(f"{label}:{int(val)}" for label, val in zip(dataset.label_cols, pred_binary_labels))
             prob_str = ' '.join(f"{label}:{prob:.4f}" for label, prob in zip(dataset.label_cols, probs))
@@ -117,10 +156,12 @@ def classify_point_clouds(epoch):
     per_label_accuracy = []
     
     print("\nPer-Label Metrics:")
+    # Calculate and print metrics for each individual label
     for i, label_name in enumerate(dataset.label_cols):
         true_for_label = all_true_labels[:, i]
         pred_for_label = all_predicted_binary_labels[:, i]
         
+        # Calculate F1-score and accuracy
         f1_lbl = f1_score(true_for_label, pred_for_label, zero_division=0)
         acc_lbl = np.mean(true_for_label == pred_for_label) * 100
         
@@ -128,6 +169,7 @@ def classify_point_clouds(epoch):
         per_label_accuracy.append(acc_lbl)
         print(f"   {label_name}: Accuracy = {acc_lbl:.2f}%, F1 = {f1_lbl:.4f}")
         
+        # Generate and save confusion matrix for each label
         cm = confusion_matrix(true_for_label, pred_for_label)
         plt.figure(figsize=(6, 5))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False,
@@ -143,15 +185,18 @@ def classify_point_clouds(epoch):
         plt.close()
         print(f"Confusion matrix for {label_name} saved to {cm_output_path}")
 
+    # Calculate overall mean metrics
     mean_label_accuracy = np.mean(per_label_accuracy)
     mean_label_f1 = np.mean(per_label_f1)
     print(f"\nMean Label Accuracy (avg per defect label): {mean_label_accuracy:.2f}%")
     print(f"Mean Label F1 Score (avg per defect label):: {mean_label_f1:.4f}")
 
+    # Calculate instance-level exact match accuracy
     instance_accuracy = np.mean(np.all(all_true_labels == all_predicted_binary_labels, axis=1)) * 100
     print(f"Instance exact match Accuracy: {instance_accuracy:.2f}%")
     
     roc_data = {}
+    # Calculate ROC curve data for each label
     for i, label_name in enumerate(dataset.label_cols):
         fpr_lbl, tpr_lbl, _ = roc_curve(all_true_labels[:, i], all_predicted_probs[:, i])
         roc_auc_lbl = auc(fpr_lbl, tpr_lbl)
@@ -160,6 +205,7 @@ def classify_point_clouds(epoch):
     output_dir = Path(f"{DATASET_DIR}/saved_models/{MODEL_NAME}/")
     output_dir.mkdir(parents=True, exist_ok=True)
     
+    # Save results to a text file
     txt_output_path = output_dir / "multi_label_scores.txt"
     with open(txt_output_path, "a") as f:
         f.write(f"\n--- Epoch {epoch}, Model: {MODEL_NAME} ---\n")
@@ -175,6 +221,7 @@ def classify_point_clouds(epoch):
 
     print(f"Evaluation results saved to {txt_output_path}")
 
+    # Prepare data for Excel export
     df_results_data = []
     for item in file_results_for_excel:
         row = {'Filename': item['Filename']}
@@ -202,6 +249,7 @@ def classify_point_clouds(epoch):
 
 if __name__ == "__main__":
     all_epochs_roc_data = [] 
+    # Iterate through saved model checkpoints, they are saved every 10 epochs
     for epoch in range(0, 151, 10):
         if not os.path.exists(MODEL_PATH):
             continue
@@ -211,12 +259,14 @@ if __name__ == "__main__":
         roc_data_for_epoch = classify_point_clouds(MODEL_PATH, epoch, MODEL_NAME)
         all_epochs_roc_data.append({'epoch': epoch, 'roc_data': roc_data_for_epoch})
 
+    # Plot ROC curves for each label across all epochs
     if all_epochs_roc_data:
         first_epoch_labels = list(all_epochs_roc_data[0]['roc_data'].keys())
     else:
         print("No ROC data generated for plotting")
         first_epoch_labels = []
 
+    # Generate a separate ROC plot for each label
     for label_name in first_epoch_labels:
         plt.figure(figsize=(10, 8))
         for epoch_data_item in all_epochs_roc_data:

@@ -1,4 +1,4 @@
-# Code to run classification for a pytorch based image classification model. 
+# Code to run classification for a pytorch based image classification model convolutional neural network. 
 # It can use single and multilabel data. 
 # It automatically loads the data, models and automates the classification run
 # Metrics such as F1-score, accuracy and ROC AUC are collected and plotted in 
@@ -17,8 +17,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
-
 import warnings
+
 warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 
 # Global variables
@@ -67,7 +67,7 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
     )
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 
-     # Initialize model with the number of labels and extra features, then load the pre-trained weights
+    # Initialize model with the number of labels and extra features, then load the pre-trained weights
     model = SimpleImageCNN(num_labels=NUM_LABELS, extra_features_dim=EXTRA_FEATURE).to(device)
     model.load_state_dict(torch.load(MODEL_PATH, map_location=device, weights_only=True))
     model.eval()
@@ -207,7 +207,7 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
     output_dir = Path(f"{DATASET_DIR}/saved_models/{MODEL_NAME}/")
     output_dir.mkdir(parents=True, exist_ok=True)
     
-     # Save results to a text file
+    # Save results to a text file
     txt_output_path = output_dir / "multi_label_scores.txt"
     with open(txt_output_path, "a") as f:
         f.write(f"\n--- Epoch {epoch}, Model: {MODEL_NAME} ---\n")
@@ -252,12 +252,13 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
 if __name__ == "__main__":
     all_epochs_roc_data = [] 
 
-     # Iterate through saved model checkpoints, they are saved every 10 epochs
+    # Iterate through saved model checkpoints, they are saved every 10 epochs
     for epoch in range(0, 151, 10):
         MODEL_PATH = f"dataset/saved_models/{MODEL_NAME}/model_epoch_{epoch}.pth"
         # if model does not exist, skip
         if not os.path.exists(MODEL_PATH):
             continue
+        
         print(f"\nProcessing model at epoch {epoch}...")
         
         roc_data_for_epoch = classify_images(MODEL_PATH, epoch, MODEL_NAME)
@@ -269,7 +270,7 @@ if __name__ == "__main__":
     else:
         print("No ROC data generated for plotting")
         first_epoch_labels = []
-        
+
     # Generate a separate ROC plot for each label
     for label_name in first_epoch_labels:
         plt.figure(figsize=(10, 8))

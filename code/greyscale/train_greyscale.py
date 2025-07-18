@@ -59,7 +59,6 @@ def train_image_model():
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     print(f"Dataloader for training data, nr of batches: {len(train_dataloader)}")
 
-    
     #Initialize datasetloader for validation set
     val_dataset = ImageDataset(
         image_dir=VAL_IMAGE_DIR,
@@ -97,7 +96,7 @@ def train_image_model():
         total_samples = 0
         validation_loss = 0.0
         
-        #or validation run dont use gradient calculations
+        #for validation run dont use gradient calculations
         with torch.no_grad():
             for images, extra_features, labels, _ in val_dataloader:
                 images, labels, extra_features = images.to(device), labels.to(device), extra_features.to(device)
