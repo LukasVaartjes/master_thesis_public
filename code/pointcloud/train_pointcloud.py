@@ -21,14 +21,16 @@ TRAIN_DATA_DIR = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/train"
 TRAIN_DATA_DESCRIPTION_FILE = f"{TRAIN_DATA_DIR}/train_labels.xlsx"
 VAL_IMAGE_DIR = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/validate"
 VAL_DESC = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
-EPOCHS = 15
+EPOCHS = 13
 BATCH_SIZE = 32
 LR = 0.001
 NUM_POINTS = 2000
 # Number of output classes/labels
 NUM_LABELS = 4
-EXTRA_FEATURES = 0
 # Number of features used in the model now
+EXTRA_FEATURES = 0
+# Every % VAL_EPOCH validation run is done
+VAL_EPOCH = 10
 
 
 # Runs the entire training process for the image classification model
@@ -149,7 +151,7 @@ def train_pointcloud_model():
 
         progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{EPOCHS}", leave=False)
 
-        for batch_idx, (points, extra_features, labels, _) in enumerate(progress_bar):
+        for batch_idx, (points, extra_features, labels, filenames) in enumerate(progress_bar):
             points, labels, extra_features = points.to(device), labels.to(device), extra_features.to(device)
             optimizer.zero_grad()
 
@@ -168,6 +170,18 @@ def train_pointcloud_model():
 
             progress_bar.set_postfix(loss=loss.item())
 
+            # Debug purposes, incomment to remove
+            label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves'] # Define your label names
+            probabilities = torch.sigmoid(outputs)
+            # Convert probabilities to binary predictions (0 or 1 based on 0.5 threshold)
+            preds_binary = (probabilities > 0.5).int()
+
+            print(f"\n--- Epoch {epoch+1}, Batch {batch_idx+1} ---")
+            for i in range(labels.size(0)): # Iterate through each sample in the batch
+                prob_str = ', '.join(f'{label_names[j]}: {probabilities[i][j].item():.4f}' for j in range(len(label_names)))
+                # Using .cpu().numpy().tolist() for labels to avoid ValueError if not single scalar
+                print(f"File: {filenames[i]}, True: {labels[i].cpu().numpy().tolist()}, Pred: {preds_binary[i].cpu().numpy().tolist()}, Probs: {{{prob_str}}}")
+
         acc = (correct_total_labels / total_samples * 100) if total_samples > 0 else 0.0
         print_epoch_summary(epoch + 1, total_loss, acc)
         total_loss_array.append(total_loss)
@@ -175,7 +189,7 @@ def train_pointcloud_model():
         scheduler.step()
 
         # Every 10 epochs, validate the model and save  model states
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) % VAL_EPOCH == 0:
             val_accuracy, val_loss = validate_model()
             val_acc_array.append(val_accuracy)
             val_loss_array.append(val_loss)
@@ -188,39 +202,44 @@ def train_pointcloud_model():
 
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
-    #Plot training loss, validation accuracy, and validation loss
+    #plotting for Training Loss & Validation Accuracy
+    fig, ax1 = plt.subplots()
+
     ax1.set_xlabel('Epoch')
     ax1.set_ylabel('Training Loss', color='tab:blue')
-    ax1.plot(range(1, EPOCHS + 1), total_loss_array, label='Training Loss', color='tab:blue', linestyle='-')
+    ax1.plot(range(1, EPOCHS + 1), total_loss_array, label='Training Loss', color='tab:blue')
     ax1.tick_params(axis='y', labelcolor='tab:blue')
-    ax1.set_ylim(bottom=0)
 
     ax2 = ax1.twinx()
-    val_epochs = [(i + 1) for i in range(EPOCHS) if (i + 1) % 10 == 0]
-    ax2.set_ylabel('Validation Accuracy (%)', color='tab:orange')
-    ax2.plot(val_epochs, val_acc_array, label='Validation Accuracy', color='tab:orange', linestyle='--')
+    
+    val_epochs = [(i + 1) for i in range(EPOCHS) if (i + 1) %  VAL_EPOCH == 0]
+    ax2.plot(val_epochs, val_acc_array, label='Validation Accuracy', color='tab:orange')
+    ax2.set_ylabel('Validation Accuracy', color='tab:orange')
     ax2.tick_params(axis='y', labelcolor='tab:orange')
-    ax2.set_ylim(0, 100)
 
-    ax3 = ax1.twinx()
-    ax3.spines['right'].set_position(('outward', 60)) 
-    ax3.set_ylabel('Validation Loss', color='tab:red')
-    ax3.plot(val_epochs, val_loss_array, label='Validation Loss', color='tab:red', linestyle=':')
-    ax3.tick_params(axis='y', labelcolor='tab:red')
-    ax3.set_ylim(bottom=0) 
-
-    lines, labels = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    lines3, labels3 = ax3.get_legend_handles_labels()
-    ax3.legend(lines + lines2 + lines3, labels + labels2 + labels3, loc='upper right')
-
-    plt.title("Training Loss, Validation Accuracy, and Validation Loss")
+    plt.title("Training Loss & Validation Accuracy")
     fig.tight_layout()
     plt.grid(True)
-    save_path = f"{save_dir}/training_loss_val_accuracy_and_val_loss.png"
+    save_path = f"{save_dir}/training_loss_and_val_accuracy.png"
     plt.savefig(save_path)
     plt.close()
     print(f"Plot saved to {save_path}")
+
+    #Plot validation loss
+    fig2, ax3 = plt.subplots(figsize=(10, 6)) 
+    ax3.set_xlabel('Epoch')
+    ax3.set_ylabel('Validation Loss', color='tab:blue')
+    ax3.plot(val_epochs, val_loss_array, label='Validation Loss', color='tab:blue')
+    ax3.tick_params(axis='y', labelcolor='tab:blue')
+    ax3.set_ylim(bottom=0) 
+    ax3.legend(loc='upper right') 
+
+    plt.title("Validation Loss")
+    fig2.tight_layout()
+    save_path_val_loss = f"{save_dir}/validation_loss.png"
+    fig2.savefig(save_path_val_loss)
+    plt.close(fig2)
+    print(f"Plot saved to {save_path_val_loss}")
 
 def print_epoch_summary(epoch, total_loss, accuracy):
     """

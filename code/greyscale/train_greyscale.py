@@ -197,7 +197,7 @@ def train_image_model():
 
     fig, ax1 = plt.subplots(figsize=(10, 6))
    
-    # This is the plotting block for Training Loss & Validation Accuracy, later add validation loss as well.
+    #plotting for Training Loss & Validation Accuracy
     fig, ax1 = plt.subplots()
 
     ax1.set_xlabel('Epoch')

@@ -28,7 +28,7 @@ MODEL_NAME = "pointcloud"
 DATASET_DIR = "./dataset/"
 SAVE_MODEL_PATH = "./dataset/saved_models"
 SPLIT_OUTPUT_DIR = "split_output"
-MODEL_PATH = f"{DATASET_DIR}/saved_models/{MODEL_NAME}/"
+MODEL_PATH = f"{DATASET_DIR}saved_models/{MODEL_NAME}/"
 NUM_LABELS = 4
 EXTRA_FEATURE = 0
 NUM_POINTS = 2000
@@ -69,7 +69,7 @@ def classify_point_clouds(epoch):
 
     # Initialize model with the number of labels and extra features, then load the pre-trained weights
     model = PointNetPlusPlusClassifier(num_classes=NUM_LABELS, extra_features_dim=EXTRA_FEATURE).to(device)
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=device, weights_only=True))
+    model.load_state_dict(torch.load(f"{MODEL_PATH}model_epoch_{epoch}.pth", map_location=device, weights_only=True))
     model.eval()
 
     # Lists to store all true labels, predicted probabilities, and binary predictions
@@ -251,12 +251,12 @@ if __name__ == "__main__":
     all_epochs_roc_data = [] 
     # Iterate through saved model checkpoints, they are saved every 10 epochs
     for epoch in range(0, 151, 10):
-        if not os.path.exists(MODEL_PATH):
+        if not os.path.exists(f"{MODEL_PATH}model_epoch_{epoch}.pth"):
             continue
 
         print(f"\nProcessing model at epoch {epoch}...")
         
-        roc_data_for_epoch = classify_point_clouds(MODEL_PATH, epoch, MODEL_NAME)
+        roc_data_for_epoch = classify_point_clouds(epoch)
         all_epochs_roc_data.append({'epoch': epoch, 'roc_data': roc_data_for_epoch})
 
     # Plot ROC curves for each label across all epochs
