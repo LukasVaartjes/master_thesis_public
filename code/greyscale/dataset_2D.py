@@ -23,20 +23,21 @@ class ImageDataset(Dataset):
 
         self.metadata = pd.read_excel(description_data)
 
-        self.ply_data_path = os.path.join(self.pointcloud_dir, 'ply')
-        
-        if not os.path.isdir(self.ply_data_path):
-            raise FileNotFoundError(f"ply directory not found at: '{self.ply_data_path}'")
+        self.metadata = pd.read_excel(description_data)
 
-        # get all existing .ply files in the ply dir
-        existing_pc_files = {f for f in os.listdir(self.ply_data_path) if f.endswith('.ply')}
+        # Ensure the image directory exists
+        if not os.path.isdir(self.image_dir):
+            raise FileNotFoundError(f"Image directory not found at: '{self.image_dir}'")
+
+        # Get all existing .png files in the image directory
+        existing_img_files = {f for f in os.listdir(self.image_dir) if f.endswith('.png')}
         
-        # only include entries where the PLY file exists in the ply subdirectory
-        self.metadata = self.metadata[self.metadata['File_Name_PLY'].isin(existing_pc_files)].reset_index(drop=True)
-        self.image_files = self.metadata['File_Name_PNG'].tolist() 
+        # Only include entries where the PNG file exists in the image directory
+        self.metadata = self.metadata[self.metadata['File_Name_PNG'].isin(existing_img_files)].reset_index(drop=True)
+        self.image_files = self.metadata['File_Name_PNG'].tolist()
 
         if not self.image_files:
-            raise ValueError(f"no valid image files were found in '{self.png_data_path}' that match entries in '{description_data}' after filtering")
+            raise ValueError(f"No valid image files were found in '{self.image_dir}' that match entries in '{description_data}' after filtering.")
 
         self.label_cols = ['Good_layer', 'Ditch', 'Crater', 'Waves']
         
@@ -52,7 +53,7 @@ class ImageDataset(Dataset):
             idx = idx.tolist()
 
         img_filename = self.image_files[idx]
-        img_path = os.path.join(self.png_data_path, img_filename) 
+        img_path = os.path.join(self.image_dir, img_filename) 
 
         image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
 

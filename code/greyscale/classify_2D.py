@@ -60,8 +60,9 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
 
     # Initialize dataset for the test set
     # set batch size tp 1 for individual image processing
+    test_image_dir = os.path.join(IMAGE_DIR, 'png')
     dataset = ImageDataset(
-        image_dir=IMAGE_DIR,
+        image_dir=test_image_dir,
         description_data=DESCRIPTION_FILE,
         target_size=IMAGE_SIZE if IMAGE_SIZE else (128, 128)
     )
@@ -134,7 +135,7 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
             # Store results for Excel
             file_results_for_excel.append({
                 'Filename': img_file,
-                'True_Label': int(true_labels.cpu().numpy().item()),
+                'True_Label': true_labels.cpu().numpy().tolist(),
                 'Predicted_Label': pred_binary_labels, 
                 'Predicted_Probability': probs 
             })
@@ -182,7 +183,7 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
         plt.title(f'Confusion Matrix for {label_name} (Epoch {epoch})')
         plt.xlabel('Predicted Label')
         plt.ylabel('True Label')
-        cm_output_path = f"{DATASET_DIR}/saved_models/confusion_matrix_{label_name}_epoch_{epoch}.png"
+        cm_output_path = f"{DATASET_DIR}/saved_models{MODEL_NAME}/confusion_matrix_{label_name}_epoch_{epoch}.png"
         plt.savefig(cm_output_path)
         plt.close()
         print(f"Confusion matrix for {label_name} saved to {cm_output_path}")
@@ -253,7 +254,7 @@ if __name__ == "__main__":
     all_epochs_roc_data = [] 
 
     # Iterate through saved model checkpoints, they are saved every 10 epochs
-    for epoch in range(0, 151, 10):
+    for epoch in range(0, 31, 10):
         MODEL_PATH = f"dataset/saved_models/{MODEL_NAME}/model_epoch_{epoch}.pth"
         # if model does not exist, skip
         if not os.path.exists(MODEL_PATH):

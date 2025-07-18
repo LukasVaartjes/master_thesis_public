@@ -21,7 +21,7 @@ TRAIN_DATA_DIR = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/train"
 TRAIN_DATA_DESCRIPTION_FILE = f"{TRAIN_DATA_DIR}/train_labels.xlsx"
 VAL_IMAGE_DIR = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/validate"
 VAL_DESC = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
-EPOCHS = 15
+EPOCHS = 50
 BATCH_SIZE = 32
 LR = 0.001
 IMAGE_SIZE = (150, 150)
@@ -49,19 +49,21 @@ def train_image_model():
     # Run on gpu if available, otherwise use cpu
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
-
+    train_image_dir = os.path.join(TRAIN_DATA_DIR, 'png')
     #Initialize datasetloader for training data
     train_dataset = ImageDataset(
-        image_dir=TRAIN_DATA_DIR,
+        image_dir=train_image_dir,
         description_data=TRAIN_DATA_DESCRIPTION_FILE,
         target_size=IMAGE_SIZE
     )
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     print(f"Dataloader for training data, nr of batches: {len(train_dataloader)}")
 
+    
+    validate_image_dir = os.path.join(VAL_IMAGE_DIR, 'png')
     #Initialize datasetloader for validation set
     val_dataset = ImageDataset(
-        image_dir=VAL_IMAGE_DIR,
+        image_dir=validate_image_dir,
         description_data=VAL_DESC,
         target_size=IMAGE_SIZE
     )
@@ -125,6 +127,8 @@ def train_image_model():
         # Calculate overall instance accuracy
         instance_accuracy = all_labels_correct / total_samples * 100
 
+        
+
         print(f"Validation - Mean Label Accuracy: {mean_accuracy:.2f}% ||| Instance Accuracy: {instance_accuracy:.2f}% | Validation Loss: {avg_validation_loss:.4f}")
         return instance_accuracy, avg_validation_loss
 
@@ -143,7 +147,7 @@ def train_image_model():
 
         progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{EPOCHS}", leave=False)
 
-        for batch_idx, (images, extra_features, labels, _) in enumerate(progress_bar):
+        for batch_idx, (images, extra_features, labels, filenames) in enumerate(progress_bar):
             images, labels, extra_features = images.to(device), labels.to(device), extra_features.to(device)
             optimizer.zero_grad()
 
@@ -159,6 +163,19 @@ def train_image_model():
             total_samples += labels.size(0)
 
             progress_bar.set_postfix(loss=loss.item())
+            
+            # print details per batch during training for debugging
+            # Convert logits to probabilities (values between 0 and 1)
+            label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves']
+            probabilities = torch.sigmoid(outputs)
+            # Convert probabilities to binary predictions (0 or 1 based on 0.5 threshold)
+            preds_binary = (probabilities > 0.5).int() 
+
+            print(f"--- Epoch {epoch+1}, Batch {batch_idx+1} ---")
+            for i in range(labels.size(0)):
+                prob_str = ', '.join(f'{label_names[j]}: {probabilities[i][j].item():.4f}' for j in range(len(label_names)))
+                print(f"File: {filenames[i]}, True: {labels[i].cpu().numpy()}, Pred: {preds_binary[i].cpu().numpy()}, Probs: {{{prob_str}}}")
+
 
         acc = correct_total_labels / total_samples * 100
         print_epoch_summary(epoch + 1, total_loss, acc)
@@ -179,40 +196,45 @@ def train_image_model():
             print(f"Model saved to {checkpoint_path}")
 
     fig, ax1 = plt.subplots(figsize=(10, 6))
+   
+    # This is the plotting block for Training Loss & Validation Accuracy, later add validation loss as well.
+    fig, ax1 = plt.subplots()
 
-    #Plot training loss, validation accuracy, and validation loss
     ax1.set_xlabel('Epoch')
     ax1.set_ylabel('Training Loss', color='tab:blue')
-    ax1.plot(range(1, EPOCHS + 1), total_loss_array, label='Training Loss', color='tab:blue', linestyle='-')
+    ax1.plot(range(1, EPOCHS + 1), total_loss_array, label='Training Loss', color='tab:blue')
     ax1.tick_params(axis='y', labelcolor='tab:blue')
-    ax1.set_ylim(bottom=0)
 
     ax2 = ax1.twinx()
+    
     val_epochs = [(i + 1) for i in range(EPOCHS) if (i + 1) % 10 == 0]
-    ax2.set_ylabel('Validation Accuracy (%)', color='tab:orange')
-    ax2.plot(val_epochs, val_acc_array, label='Validation Accuracy', color='tab:orange', linestyle='--')
+    ax2.plot(val_epochs, val_acc_array, label='Validation Accuracy', color='tab:orange')
+    ax2.set_ylabel('Validation Accuracy', color='tab:orange')
     ax2.tick_params(axis='y', labelcolor='tab:orange')
-    ax2.set_ylim(0, 100)
 
-    ax3 = ax1.twinx()
-    ax3.spines['right'].set_position(('outward', 60)) 
-    ax3.set_ylabel('Validation Loss', color='tab:red')
-    ax3.plot(val_epochs, val_loss_array, label='Validation Loss', color='tab:red', linestyle=':')
-    ax3.tick_params(axis='y', labelcolor='tab:red')
-    ax3.set_ylim(bottom=0) 
-
-    lines, labels = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    lines3, labels3 = ax3.get_legend_handles_labels()
-    ax3.legend(lines + lines2 + lines3, labels + labels2 + labels3, loc='upper right')
-
-    plt.title("Training Loss, Validation Accuracy, and Validation Loss")
+    plt.title("Training Loss & Validation Accuracy")
     fig.tight_layout()
     plt.grid(True)
-    save_path = f"{save_dir}/training_loss_val_accuracy_and_val_loss.png"
+    save_path = f"{save_dir}/training_loss_and_val_accuracy.png"
     plt.savefig(save_path)
     plt.close()
     print(f"Plot saved to {save_path}")
+
+    #Plot validation loss
+    fig2, ax3 = plt.subplots(figsize=(10, 6)) 
+    ax3.set_xlabel('Epoch')
+    ax3.set_ylabel('Validation Loss', color='tab:blue')
+    ax3.plot(val_epochs, val_loss_array, label='Validation Loss', color='tab:blue')
+    ax3.tick_params(axis='y', labelcolor='tab:blue')
+    ax3.set_ylim(bottom=0) 
+    ax3.legend(loc='upper right') 
+
+    plt.title("Validation Loss")
+    fig2.tight_layout()
+    save_path_val_loss = f"{save_dir}/validation_loss.png"
+    fig2.savefig(save_path_val_loss)
+    plt.close(fig2)
+    print(f"Plot saved to {save_path_val_loss}")
 
 def print_epoch_summary(epoch, total_loss, accuracy):
     """
