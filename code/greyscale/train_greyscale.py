@@ -12,6 +12,7 @@ from torch import nn
 from dataset_2D import ImageDataset
 from cnn_model_2d import SimpleImageCNN
 
+# Constants and model settings
 MODEL_NAME = "greyscale"
 DATASET_DIR = "./dataset/"
 SAVE_MODEL_PATH = "./dataset/saved_models"
@@ -24,7 +25,9 @@ EPOCHS = 15
 BATCH_SIZE = 32
 LR = 0.001
 IMAGE_SIZE = (150, 150)
+# Number of output classes/labels
 NUM_LABELS = 4
+# Number of features used in the model now
 EXTRA_FEATURES = 0
 
 
@@ -47,6 +50,7 @@ def train_image_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
+    #Initialize datasetloader for training data
     train_dataset = ImageDataset(
         image_dir=TRAIN_DATA_DIR,
         description_data=TRAIN_DATA_DESCRIPTION_FILE,
@@ -55,6 +59,8 @@ def train_image_model():
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     print(f"Dataloader for training data, nr of batches: {len(train_dataloader)}")
 
+    
+    #Initialize datasetloader for validation set
     val_dataset = ImageDataset(
         image_dir=VAL_IMAGE_DIR,
         description_data=VAL_DESC,
@@ -63,31 +69,35 @@ def train_image_model():
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
     print(f"Dataloader for validation data, nr of batches:{len(val_dataloader)}")
 
-    # I dont use any featuress at the moment
-    # num_labels = len(train_dataset.label_cols)
-    # extra_features_dim = len(train_dataset.extra_features_cols)
-
+    #Initialize used model
     model = SimpleImageCNN(num_labels=NUM_LABELS, extra_features_dim=EXTRA_FEATURES).to(device)
     print(f"Model architecture: {model}")
 
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-4)
 
+    #learning rate where it is reduced by 0.5 every 10 epochs
     scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
-
-    def print_epoch_summary(epoch, total_loss, accuracy):
-        green_color = "\033[32m"
-        reset_color = "\033[0m"
-        print(f"{green_color}[{epoch}/{EPOCHS}] Epoch completed. Total Loss: {total_loss:.4f} | Accuracy: {accuracy:.2f}%{reset_color} \n")
-
+  
     def validate_model():
+        """
+        Performs a validation run over the validation dataset, in this case every 10 epochs
+        Model is set to evaluation mode, iterates through dataitems from validation dataloader
+        calculates predictions, validation loss and determines label and instance accuracy
+
+        Returns:
+            - float: The accuracy on validation set as a percentage
+            - float: The loss on the validation set
+        """
+
         model.eval()
         correct_predictions_per_label = torch.zeros(NUM_LABELS).to(device)
         total_predictions_per_label = torch.zeros(NUM_LABELS).to(device)
         all_labels_correct = 0
         total_samples = 0
         validation_loss = 0.0
-
+        
+        #or validation run dont use gradient calculations
         with torch.no_grad():
             for images, extra_features, labels, _ in val_dataloader:
                 images, labels, extra_features = images.to(device), labels.to(device), extra_features.to(device)
@@ -99,23 +109,24 @@ def train_image_model():
 
                 preds = torch.sigmoid(outputs) > 0.5
 
+                # Calculate accuracy of predictions per label 
                 correct_predictions_per_label += (preds == labels).sum(dim=0)
                 total_predictions_per_label += labels.size(0)
-
                 
-
+                # Calculate accuracy of predictions per instance (all labels of single datapoint)
                 all_labels_correct += (preds == labels).all(dim=1).sum().item()
                 total_samples += labels.size(0)
                 
         # Calculate average validation loss
         avg_validation_loss = validation_loss / len(val_dataloader)
 
+        # Caluclate overal accuracy per label
         accuracy_per_label = (correct_predictions_per_label / total_predictions_per_label) * 100
         mean_accuracy = torch.mean(accuracy_per_label).item()
-
+        # Calculate overall instance accuracy
         instance_accuracy = all_labels_correct / total_samples * 100
 
-        print(f"Validation - Mean Label Accuracy: {mean_accuracy:.2f}% | Instance Accuracy: {instance_accuracy:.2f}% | Validation Loss: {avg_validation_loss:.4f}")
+        print(f"Validation - Mean Label Accuracy: {mean_accuracy:.2f}% ||| Instance Accuracy: {instance_accuracy:.2f}% | Validation Loss: {avg_validation_loss:.4f}")
         return instance_accuracy, avg_validation_loss
 
     #Save intermediate model states for plotting later on
@@ -153,6 +164,7 @@ def train_image_model():
         acc = correct_total_labels / total_samples * 100
         print_epoch_summary(epoch + 1, total_loss, acc)
         total_loss_array.append(total_loss)
+        #Update learning rate scheduler
         scheduler.step()
 
         # Every 10 epochs, validate the model and save  model states
@@ -202,6 +214,20 @@ def train_image_model():
     plt.savefig(save_path)
     plt.close()
     print(f"Plot saved to {save_path}")
+
+def print_epoch_summary(epoch, total_loss, accuracy):
+    """
+    Prints information about epoch training progress 
+
+    Args:
+        epoch (int): Epoch number
+        total_loss (float): training loss for current epoch.
+        accuracy (float):  accuracy for the current epoch.
+    """
+    green_color = "\033[32m"
+    reset_color = "\033[0m"
+    print(f"{green_color}[{epoch}/{EPOCHS}] Epoch completed. Total Loss: {total_loss:.4f} | Accuracy: {accuracy:.2f}%{reset_color} \n")
+
 
 if __name__ == "__main__":
     print(f"starting training for {MODEL_NAME}")

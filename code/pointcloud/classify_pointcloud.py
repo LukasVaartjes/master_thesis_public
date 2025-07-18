@@ -59,13 +59,9 @@ def classify_point_clouds(epoch):
             points = points.to(device)
             extra_features = extra_features.to(device)
             true_labels = true_labels.to(device)
-
             output = model(points, extra_features)
-
             probs = torch.sigmoid(output).cpu().detach().numpy()[0]
-            
             initial_binary_predictions = (probs > 0.5).astype(int)
-            
             final_pred_binary_labels = np.zeros_like(initial_binary_predictions, dtype=int)
 
             try:
@@ -206,7 +202,6 @@ def classify_point_clouds(epoch):
 
 if __name__ == "__main__":
     all_epochs_roc_data = [] 
-
     for epoch in range(0, 151, 10):
         if not os.path.exists(MODEL_PATH):
             continue
