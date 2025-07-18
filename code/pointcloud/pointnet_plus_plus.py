@@ -1,13 +1,14 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
 # Defines single set abstraction layer for PointNet++. 
 # It learns local features within a area of the point cloud 
 # It first performs Farthest Point Sampling to retieve set of important points
 # For this set, it retrieves sets of neighboring points via ball query function
 # A shared Multi-Layer Perceptron (MLP) uses these grouped points, performs max pooling
 # to reteieve a feature vector for a local area.
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 class PointNetSetAbstraction(nn.Module):
     def __init__(self, npoint, radius, nsample, in_channel, mlp):
         super().__init__()
