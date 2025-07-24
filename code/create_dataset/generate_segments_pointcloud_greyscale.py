@@ -25,9 +25,9 @@ OUTPUT_FOLDER = "./dataset"
 #Base directory containing raw input point cloud files.
 INPUT_FOLDER = "./data"
 #Path for Excel file to describe point cloud outputs
-EXCEL_POINTCLOUD_OUTPUT_PATH = "./dataset/description_pointcloud.xlsm"
+EXCEL_POINTCLOUD_OUTPUT_PATH = "./dataset/description_pointcloud.xlsx"
 #Path for Excel file to describe greyscale outputs
-EXCEL_GREYSCALE_OUTPUT_PATH = "./dataset/description_greyscale.xlsm"
+EXCEL_GREYSCALE_OUTPUT_PATH = "./dataset/description_greyscale.xlsx"
 #Text file containing pre-calculated global min/max Z-values for normalization
 GLOBAL_Z_VALUES_TXT = "./dataset/z_min_max.txt" # Corrected path to be a file
 #The side length in millimeters for each square bounding box segment
