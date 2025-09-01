@@ -35,13 +35,13 @@ BOX_SIZE_MM = 10
 #The width of the border (in mm) to remove from the point cloud's border
 INITIAL_BORDER_TRIM_MM = 5
 #Number of neighbors for statistical outlier removal
-STATISTICAL_OUTLIER_NB_NEIGHBORS = 40
+STATISTICAL_OUTLIER_NB_NEIGHBORS = 10
 #Standard deviation ratio for statistical outlier removal
-STATISTICAL_OUTLIER_STD_RATIO = 1.5
+STATISTICAL_OUTLIER_STD_RATIO = 2.5
 #Number of points for radius outlier removal
-RADIUS_OUTLIER_NB_POINTS = 30
+RADIUS_OUTLIER_NB_POINTS = 5
 #Radius for radius outlier removal in millimeters
-RADIUS_OUTLIER_RADIUS_MM = 0.8
+RADIUS_OUTLIER_RADIUS_MM = 1.0
 #Voxel size for downsampling
 VOXEL_DOWNSAMPLING_SIZE_MM = 0.2
 #Maximum allowed overlap between randomly placed boxes
@@ -102,6 +102,33 @@ def load_pointcloud(name_data):
     print(f"Trimmed outer {INITIAL_BORDER_TRIM_MM}mm border, kept total of {len(filtered_pcd.points)} points, removed {len(df) - len(filtered_pcd.points)} points")
     return filtered_pcd
 
+
+def apply_filtering_pointcloud(pcd):
+    """
+    Applies voxel downsampling, statistical outlier removal, and radius outlier removal
+    on pointcloud
+    """
+    if len(pcd.points) == 0:
+        return pcd
+
+    # 1. Voxel downsampling
+    if VOXEL_DOWNSAMPLING_SIZE_MM > 0:
+        pcd = pcd.voxel_down_sample(VOXEL_DOWNSAMPLING_SIZE_MM)
+        print(f"Point cloud downsampled, points{len(pcd.points)} left ")
+
+    # 2. Statistical outlier removal
+    if STATISTICAL_OUTLIER_NB_NEIGHBORS > 0:
+        pcd, ind = pcd.remove_statistical_outlier(nb_neighbors=STATISTICAL_OUTLIER_NB_NEIGHBORS,
+                                                  std_ratio=STATISTICAL_OUTLIER_STD_RATIO)
+        print(f"Statistical outlier removal, points{len(pcd.points)} left ")
+
+    # 3. Radius outlier removal
+    if RADIUS_OUTLIER_NB_POINTS > 0:
+        pcd, ind = pcd.remove_radius_outlier(nb_points=RADIUS_OUTLIER_NB_POINTS,
+                                             radius=RADIUS_OUTLIER_RADIUS_MM)
+        print(f"Radius outlier removal, points{len(pcd.points)} left ")
+
+    return pcd
 
 def detrend_plane(pcd):
     """
@@ -370,10 +397,10 @@ def fixed_box_visualize(pcd_df, pc_id, full_img, x_offset_pc, y_offset_pc, pre_r
         box_pcd_o3d = o3d.geometry.PointCloud()
         box_pcd_o3d.points = o3d.utility.Vector3dVector(box_points_in_mm)
 
-        output_pointcloud_path = os.path.join(OUTPUT_FOLDER, "pointcloud", f"{pc_id}_box_{saved}.ply")
+        # output_pointcloud_path = os.path.join(OUTPUT_FOLDER, "pointcloud", f"{pc_id}_box_{saved}.ply")
         if len(box_pcd_o3d.points) > 0:
-            o3d.io.write_point_cloud(output_pointcloud_path, box_pcd_o3d)
-            print(f"Saved point cloud segment with {len(box_pcd_o3d.points)} points to {output_pointcloud_path}")
+            # o3d.io.write_point_cloud(output_pointcloud_path, box_pcd_o3d)
+            # print(f"Saved point cloud segment with {len(box_pcd_o3d.points)} points to {output_pointcloud_path}")
 
             # Add the selected points to visualise plot in a different color
             ax_2d_viz.scatter(np.asarray(box_pcd_o3d.points)[:, 0], np.asarray(box_pcd_o3d.points)[:, 1],
@@ -543,3 +570,11 @@ if __name__ == "__main__":
         fixed_box_visualize(pcd_df, pc_id=pc_id, full_img=img_full,
                             x_offset_pc=x_offset_pc, y_offset_pc=y_offset_pc,
                             pre_resize_width=pre_resize_width, pre_resize_height=pre_resize_height)
+        
+        pcd_filtered = apply_filtering_pointcloud(pcd_df)
+
+        #Save filtered point cloud
+        final_pcd_path = os.path.join(OUTPUT_FOLDER, "pointcloud", f"{pc_id}_filtered.ply")
+        if len(pcd_filtered.points) > 0:
+            o3d.io.write_point_cloud(final_pcd_path, pcd_filtered)
+            print(f"Saved filtered point cloud to {final_pcd_path}")

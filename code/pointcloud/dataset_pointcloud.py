@@ -8,6 +8,18 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 from plyfile import PlyData
+import open3d as o3d
+
+#Number of neighbors for statistical outlier removal
+STATISTICAL_OUTLIER_NB_NEIGHBORS = 40
+#Standard deviation ratio for statistical outlier removal
+STATISTICAL_OUTLIER_STD_RATIO = 1.5
+#Number of points for radius outlier removal
+RADIUS_OUTLIER_NB_POINTS = 30
+#Radius for radius outlier removal in millimeters
+RADIUS_OUTLIER_RADIUS_MM = 0.8
+#Voxel size for downsampling
+VOXEL_DOWNSAMPLING_SIZE_MM = 0.2
 
 class PointCloudDataset(Dataset):
     """
@@ -63,6 +75,31 @@ class PointCloudDataset(Dataset):
         plydata = PlyData.read(pc_path)
         vertices = plydata['vertex']
         points = np.vstack([vertices[t] for t in ['x', 'y', 'z']]).T
+        
+        #Convert to pointcloud to do downsampling and outlier removal operations.
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(points)
+
+        #Voxel downsampling
+        if len(pcd.points) > 0:
+            pcd = pcd.voxel_down_sample(voxel_size=VOXEL_DOWNSAMPLING_SIZE_MM)
+
+        #Statistical outlier removal
+        if len(pcd.points) > 0:
+            pcd, ind_stat = pcd.remove_statistical_outlier(
+                nb_neighbors=STATISTICAL_OUTLIER_NB_NEIGHBORS,
+                std_ratio=STATISTICAL_OUTLIER_STD_RATIO
+            )
+
+        #Radius outlier removal
+        if len(pcd.points) > 0:
+            pcd, ind_radius = pcd.remove_radius_outlier(
+                nb_points=RADIUS_OUTLIER_NB_POINTS,
+                radius=RADIUS_OUTLIER_RADIUS_MM
+            )
+        print(f"After voxel downsampling, statiscical outlier and radius outlier removal points remaining: {len(pcd.points)}")
+
+        points = np.asarray(pcd.points)    
 
         if points.shape[0] >= self.num_points:
             choice = np.random.choice(points.shape[0], self.num_points, replace=False)

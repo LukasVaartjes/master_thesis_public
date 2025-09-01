@@ -13,7 +13,7 @@ from scipy.interpolate import griddata
 from scipy.ndimage import median_filter
 
 # Load point cloud
-pointcloud = PyntCloud.from_file("./dataset/split_output/train/ply/103_box_1_270.ply")
+pointcloud = PyntCloud.from_file("./dataset/pointcloud/00_117_box_5.ply")
 # pointcloud = PyntCloud.from_file("./code/data/experiment_1/mannitol/pc/06_pc.ply")
 # pointcloud = PyntCloud.from_file("./code/data/init_testing_scanner/metal_plate_pc.ply")
 df = pointcloud.points
