@@ -45,9 +45,10 @@ class PointNetPlusPlusClassifier(nn.Module):
         super().__init__()
         self.extra_features_dim = extra_features_dim
         
-        self.sa1 = PointNetSetAbstraction(npoint=512, radius=0.1, nsample=32, in_channel=0, mlp=[64, 64, 128])
-        self.sa2 = PointNetSetAbstraction(npoint=128, radius=0.2, nsample=64, in_channel=128, mlp=[128, 128, 256])
-        self.sa3 = PointNetSetAbstraction(npoint=32, radius=0.4, nsample=128, in_channel=256, mlp=[256, 512, 1024])
+        self.sa1 = PointNetSetAbstraction(npoint=1024, radius=0.1, nsample=32, in_channel=0, mlp=[32, 32, 64])
+        self.sa2 = PointNetSetAbstraction(npoint=256, radius=0.2, nsample=64, in_channel=64, mlp=[64, 64, 128])
+        self.sa3 = PointNetSetAbstraction(npoint=64, radius=0.4, nsample=128, in_channel=128, mlp=[128, 256, 512])
+        self.sa4 = PointNetSetAbstraction(npoint=16, radius=0.8, nsample=128, in_channel=512, mlp=[512, 512, 1024])
 
         self.fc1 = nn.Linear(1024 + extra_features_dim, 512)
         self.bn1 = nn.BatchNorm1d(512)
