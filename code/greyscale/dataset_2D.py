@@ -16,7 +16,7 @@ class ImageDataset(Dataset):
     - Load images from specified dir
     - Preprocess images resize and convert to tensors.
     """
-    def __init__(self, image_dir, description_data, target_size=(150, 150), transform=None, target_per_class=560, train=True):
+    def __init__(self, image_dir, description_data, target_size=(150, 150), transform=None, target_per_class=623, train=True):
         self.image_dir = image_dir 
         self.target_size = target_size
         self.transform = transform
@@ -33,8 +33,8 @@ class ImageDataset(Dataset):
         existing_img_files = {f for f in os.listdir(self.image_dir) if f.endswith('.png')}
         
         # Only include entries where the PNG file exists in the image directory
-        self.metadata = self.metadata[self.metadata['File_Name_PNG'].isin(existing_img_files)].reset_index(drop=True)
-        self.image_files = self.metadata['File_Name_PNG'].tolist()
+        self.metadata = self.metadata[self.metadata['png_file'].isin(existing_img_files)].reset_index(drop=True)
+        self.image_files = self.metadata['png_file'].tolist()
 
         if not self.image_files:
             raise ValueError(f"No valid image files were found in '{self.image_dir}' that match entries in '{description_data}' after filtering.")
@@ -64,7 +64,7 @@ class ImageDataset(Dataset):
 
             if augmented_rows:
                 self.metadata = pd.concat([self.metadata, pd.DataFrame(augmented_rows)], ignore_index=True)
-                self.image_files = self.metadata['File_Name_PNG'].tolist()
+                self.image_files = self.metadata['png_file'].tolist()
 
         # Show label distribution (count how many samples per class)
         label_counts = self.metadata[self.label_cols].sum().to_dict()
@@ -116,4 +116,4 @@ class ImageDataset(Dataset):
         if self.transform:
             image_tensor = self.transform(image_tensor)
 
-        return image_tensor, additional_features_tensor, label_tensor, img_filename
+        return image_tensor, additional_features_tensor, label_tensor, img_filename, aug_type

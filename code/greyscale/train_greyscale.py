@@ -11,11 +11,12 @@ from tqdm import tqdm
 from torch import nn
 from dataset_2D import ImageDataset
 from cnn_model_2d import SimpleImageCNN
+import openpyxl
 
 # Constants and model settings
 MODEL_NAME = "greyscale"
 DATASET_DIR = "./dataset_agreed/"
-SAVE_MODEL_PATH = "./dataset/saved_models"
+SAVE_MODEL_PATH = "./dataset_agreed/saved_models"
 SPLIT_OUTPUT_DIR = "split_output"
 TRAIN_DATA_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/train"
 TRAIN_DATA_DESCRIPTION_FILE = f"{TRAIN_DATA_DIR}/train_labels.xlsx"
@@ -30,6 +31,56 @@ NUM_LABELS = 4
 # Number of features used in the model now
 EXTRA_FEATURES = 0
 
+
+def log_batch_details_to_excel(file_path, epoch, batch_idx, filenames, aug_types, labels, preds_binary, probabilities, label_names):
+    """Logs detailed batch data to excel file"""
+    try:
+        workbook = openpyxl.load_workbook(file_path) if os.path.exists(file_path) else openpyxl.Workbook()
+        if 'Batch Details' not in workbook.sheetnames:
+            sheet = workbook.create_sheet('Batch Details')
+            sheet.append(["Epoch", "Batch", "Filename", "Augmentation", "True Labels", "Predicted Labels", "Probabilities"])
+        else:
+            sheet = workbook['Batch Details']
+
+        for i in range(len(filenames)):
+            true_labels_str = ', '.join(map(str, labels[i].cpu().numpy()))
+            pred_labels_str = ', '.join(map(str, preds_binary[i].cpu().numpy()))
+            probs_str = ', '.join(f'{label_names[j]}: {probabilities[i][j].item():.4f}' for j in range(len(label_names)))
+            sheet.append([epoch, batch_idx, filenames[i], aug_types[i], true_labels_str, pred_labels_str, probs_str])
+        
+        workbook.save(file_path)
+        print(f"Logged batch {batch_idx} details to Excel")
+
+    except Exception as e:
+        print(f"Logging batch details to Excel: error {e}")
+
+def log_epoch_summary_to_excel(file_path, epoch, total_loss, accuracy, val_accuracy=None, val_loss=None):
+    """Logs training and validation data to excel file"""
+    try:
+        workbook = openpyxl.load_workbook(file_path) if os.path.exists(file_path) else openpyxl.Workbook()
+        if 'Training Summary' not in workbook.sheetnames:
+            sheet = workbook.create_sheet('Training Summary')
+            sheet.append(["Epoch", "Training Loss", "Training Accuracy", "Validation Accuracy", "Validation Loss"])
+        else:
+            sheet = workbook['Training Summary']
+
+        row_found = False
+        for row in sheet.iter_rows(min_row=2, values_only=False):
+            if row[0].value == epoch:
+                row[3].value = val_accuracy
+                row[4].value = val_loss
+                row_found = True
+                break
+        
+        if not row_found:
+            # Append a new row for the epoch
+            sheet.append([epoch, total_loss, accuracy, val_accuracy, val_loss])
+            
+        workbook.save(file_path)
+        print(f"Logged epoch {epoch} summary to Excel")
+
+    except Exception as e:
+        print(f"Logging batch details to Excel: error {e}")
 
 # RUns the entire training process for the image classification model
 # 1. Sets up directories to save model and plots
@@ -54,7 +105,9 @@ def train_image_model():
     train_dataset = ImageDataset(
         image_dir=train_image_dir,
         description_data=TRAIN_DATA_DESCRIPTION_FILE,
-        target_size=IMAGE_SIZE
+        target_size=IMAGE_SIZE, 
+        target_per_class=623, 
+        train=True
     )
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     print(f"Dataloader for training data, nr of batches: {len(train_dataloader)}")
@@ -65,7 +118,8 @@ def train_image_model():
     val_dataset = ImageDataset(
         image_dir=validate_image_dir,
         description_data=VAL_DESC,
-        target_size=IMAGE_SIZE
+        target_size=IMAGE_SIZE,
+        train = False
     )
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
     print(f"Dataloader for validation data, nr of batches:{len(val_dataloader)}")
@@ -96,11 +150,11 @@ def train_image_model():
         total_predictions_per_label = torch.zeros(NUM_LABELS).to(device)
         all_labels_correct = 0
         total_samples = 0
-        validation_loss = 0.0
+        validation_loss = 0.0 
         
         #for validation run dont use gradient calculations
         with torch.no_grad():
-            for images, extra_features, labels, _ in val_dataloader:
+            for images, extra_features, labels, _ , augtype in val_dataloader:
                 images, labels, extra_features = images.to(device), labels.to(device), extra_features.to(device)
                 outputs = model(images, extra_features)
 
@@ -147,9 +201,10 @@ def train_image_model():
 
         progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{EPOCHS}", leave=False)
 
-        for batch_idx, (images, extra_features, labels, filenames) in enumerate(progress_bar):
+        for batch_idx, (images, extra_features, labels, filenames, augtype) in enumerate(progress_bar):
             images, labels, extra_features = images.to(device), labels.to(device), extra_features.to(device)
             optimizer.zero_grad()
+            excel_log_path = os.path.join(save_dir, "training_log.xlsx")   
 
             outputs = model(images, extra_features)
             loss = criterion(outputs, labels)
@@ -171,13 +226,29 @@ def train_image_model():
             # Convert probabilities to binary predictions (0 or 1 based on 0.5 threshold)
             preds_binary = (probabilities > 0.5).int() 
 
-            print(f"--- Epoch {epoch+1}, Batch {batch_idx+1} ---")
-            for i in range(labels.size(0)):
-                prob_str = ', '.join(f'{label_names[j]}: {probabilities[i][j].item():.4f}' for j in range(len(label_names)))
-                print(f"File: {filenames[i]}, True: {labels[i].cpu().numpy()}, Pred: {preds_binary[i].cpu().numpy()}, Probs: {{{prob_str}}}")
+            label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves']
+            probabilities = torch.sigmoid(outputs)
+            preds_binary = (probabilities > 0.5).int() 
+
+            # Log batch details to Excel
+            log_batch_details_to_excel(
+                excel_log_path, 
+                epoch + 1, 
+                batch_idx + 1, 
+                filenames, 
+                augtype, 
+                labels, 
+                preds_binary, 
+                probabilities, 
+                label_names
+            )
 
 
         acc = correct_total_labels / total_samples * 100
+         # Log epoch summary after each epoch
+        avg_loss = total_loss / len(train_dataloader)
+        # Log epoch summary after each epoch
+        log_epoch_summary_to_excel(excel_log_path, epoch + 1, avg_loss, acc)
         print_epoch_summary(epoch + 1, total_loss, acc)
         total_loss_array.append(total_loss)
         #Update learning rate scheduler
@@ -190,6 +261,9 @@ def train_image_model():
             val_loss_array.append(val_loss)
             print(f"validation Accuracy after epoch {epoch + 1}: {val_accuracy:.2f}%")
             print(f"validation Loss after epoch {epoch + 1}: {val_loss:.4f}")
+            # Update the existing row in the Excel sheet with validation data
+            log_epoch_summary_to_excel(excel_log_path, epoch + 1, avg_loss, acc, val_accuracy, val_loss)
+
 
             checkpoint_path = f"{save_dir}/model_epoch_{epoch + 1}.pth"
             torch.save(model.state_dict(), checkpoint_path)
@@ -253,3 +327,4 @@ def print_epoch_summary(epoch, total_loss, accuracy):
 if __name__ == "__main__":
     print(f"starting training for {MODEL_NAME}")
     train_image_model()
+
