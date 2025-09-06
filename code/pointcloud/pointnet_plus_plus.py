@@ -60,15 +60,17 @@ class PointNetPlusPlusClassifier(nn.Module):
 
     def forward(self, xyz, extra_features=None):
         B, C, N = xyz.shape
-        xyz = xyz.permute(0, 2, 1)
+        xyz = xyz.permute(0, 2, 1)  # (B, N, 3)
+
         l1_xyz, l1_points = self.sa1(xyz, None)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
-        _, l3_points = self.sa3(l2_xyz, l2_points)
-        # global max pooling
-        x = l3_points.max(dim=1)[0] 
+        l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
+        l4_xyz, l4_points = self.sa4(l3_xyz, l3_points)
+        x = l4_points.max(dim=1)[0]  # global max pooling
+
+        # Concatenate extra features if any
         if self.extra_features_dim > 0 and extra_features is not None:
-            # (B, 1024 + extra_features_dim)
-            x = torch.cat([x, extra_features], dim=1)  
+            x = torch.cat([x, extra_features], dim=1)  # shape: (B, 1024 + extra_features_dim)
 
         x = F.relu(self.bn1(self.fc1(x)))
         x = self.drop1(x)
@@ -117,16 +119,27 @@ def farthest_point_sample(xyz, npoint):
 def query_ball_point(radius, nsample, xyz, new_xyz):
     B, N, _ = xyz.shape
     S = new_xyz.shape[1]
-    
-    group_idx = torch.arange(N, device=xyz.device).view(1, 1, N).repeat([B, S, 1])
+
+    # initial indices
+    group_idx = torch.arange(N, device=xyz.device).view(1, 1, N).repeat(B, S, 1)
+
+    # squared distances
     sqrdists = square_distance(new_xyz, xyz)
     group_idx[sqrdists > radius ** 2] = N
-    group_idx = group_idx.sort(dim=-1)[0][:, :, :nsample]  # pick closest nsample
 
-    # Handle insufficient points
-    group_first = group_idx[:, :, 0].view(B, S, 1).repeat(1, 1, nsample)
+    # sort and pick closest nsample points (may be fewer than nsample)
+    group_idx = group_idx.sort(dim=-1)[0][:, :, :nsample]
+    current_nsample = group_idx.shape[-1]
+
+    group_first = group_idx[:, :, 0].unsqueeze(-1).expand(B, S, current_nsample)
     mask = group_idx == N
     group_idx[mask] = group_first[mask]
+
+    # If current_nsample < nsample, pad by repeating the first index
+    if current_nsample < nsample:
+        pad = group_idx[:, :, :1].expand(B, S, nsample - current_nsample)
+        group_idx = torch.cat([group_idx, pad], dim=-1)
+
     return group_idx
 
 # Function to calculate the distance between 2 points in 3D space

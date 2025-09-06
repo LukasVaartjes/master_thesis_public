@@ -28,10 +28,12 @@ class PointCloudDataset(Dataset):
     - Load pointcloud from specified dir
     - Preprocess pointcloud resize and convert to tensors.
     """
-    def __init__(self, pointcloud_dir, description_data, num_points, transform=None):
+    def __init__(self, pointcloud_dir, description_data, num_points, transform=None, target_per_class=623, train=True):
         self.pointcloud_dir = pointcloud_dir
         self.num_points = num_points
         self.transform = transform
+        self.train = train
+        self.target_per_class = target_per_class
         
         self.metadata = pd.read_excel(description_data)
         
@@ -48,7 +50,7 @@ class PointCloudDataset(Dataset):
         existing_pc_files = {f for f in os.listdir(self.ply_data_path) if f.endswith('.ply')}
         
         # the column name for PLY filenames in the metadata
-        pc_filename_column = 'File_Name_PLY' 
+        pc_filename_column = 'ply_file' 
         if pc_filename_column not in self.metadata.columns:
             raise ValueError(f"Metadata Excel file '{description_data}' is missing the expected point cloud filename column: '{pc_filename_column}'")
 
@@ -63,13 +65,39 @@ class PointCloudDataset(Dataset):
         if missing_label_cols:
             raise ValueError(f"missing expected label columns in {description_data}: {missing_label_cols}, column '{self.label_cols[0]}'")
         
+        self.metadata["aug_type"] = "none"
+
+        # Balance dataset only for training and define possible augmentations
+        if self.train:
+            augmented_rows = []
+            for class_idx, class_name in enumerate(self.label_cols):
+                class_subset = self.metadata[self.metadata[class_name] == 1]
+                current_count = len(class_subset)
+                needed = max(0, self.target_per_class - current_count)
+
+                if needed > 0 and len(class_subset) > 0:
+                    for _ in range(needed):
+                        row = class_subset.sample(n=1).iloc[0].copy()
+                        row["aug_type"] = np.random.choice(["rotate180", "flip_x", "jitter", "combo"])
+                        augmented_rows.append(row)
+
+            if augmented_rows:
+                self.metadata = pd.concat([self.metadata, pd.DataFrame(augmented_rows)], ignore_index=True)
+
+        # Show label distribution (count how many samples per class)
+        label_counts = self.metadata[self.label_cols].sum().to_dict()
+        print(f"\n[{self.__class__.__name__}] Dataset label distribution:")
+        for lbl, cnt in label_counts.items():
+            print(f"  {lbl}: {int(cnt)} samples (target {self.target_per_class if self.train else 'N/A'})")
+        print(f"  Total samples: {len(self.metadata)}\n")
+        
 
     def __len__(self):
         return len(self.metadata)
 
     def __getitem__(self, idx):
         row = self.metadata.iloc[idx]
-        pc_filename = row['File_Name_PLY']
+        pc_filename = row['ply_file']
         pc_path = os.path.join(self.ply_data_path, pc_filename)
 
         plydata = PlyData.read(pc_path)
@@ -80,25 +108,6 @@ class PointCloudDataset(Dataset):
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(points)
 
-        #Voxel downsampling
-        if len(pcd.points) > 0:
-            pcd = pcd.voxel_down_sample(voxel_size=VOXEL_DOWNSAMPLING_SIZE_MM)
-
-        #Statistical outlier removal
-        if len(pcd.points) > 0:
-            pcd, ind_stat = pcd.remove_statistical_outlier(
-                nb_neighbors=STATISTICAL_OUTLIER_NB_NEIGHBORS,
-                std_ratio=STATISTICAL_OUTLIER_STD_RATIO
-            )
-
-        #Radius outlier removal
-        if len(pcd.points) > 0:
-            pcd, ind_radius = pcd.remove_radius_outlier(
-                nb_points=RADIUS_OUTLIER_NB_POINTS,
-                radius=RADIUS_OUTLIER_RADIUS_MM
-            )
-        print(f"After voxel downsampling, statiscical outlier and radius outlier removal points remaining: {len(pcd.points)}")
-
         points = np.asarray(pcd.points)    
 
         if points.shape[0] >= self.num_points:
@@ -106,6 +115,19 @@ class PointCloudDataset(Dataset):
         else:
             choice = np.random.choice(points.shape[0], self.num_points, replace=True)
         points = points[choice, :]
+
+        # Apply augmentation steps
+        aug_type = row["aug_type"]
+        if aug_type == "rotate180":
+            R = np.array([[-1,0,0],[0,-1,0],[0,0,1]])
+            points = points @ R.T
+        elif aug_type == "flip_x":
+            points[:,0] = -points[:,0]
+        elif aug_type == "jitter":
+            points += np.random.normal(0, 0.01, points.shape)
+        elif aug_type == "combo":
+            points[:,0] = -points[:,0]
+            points += np.random.normal(0, 0.01, points.shape)
 
         if self.transform:
             points = self.transform(points)
@@ -119,4 +141,4 @@ class PointCloudDataset(Dataset):
         # Return an empty tensor for additional_features, similar to your ImageDataset
         additional_features_tensor = torch.empty(0, dtype=torch.float32)
 
-        return torch.tensor(points.T, dtype=torch.float32), additional_features_tensor, labels_tensor, pc_filename
+        return torch.tensor(points.T, dtype=torch.float32), additional_features_tensor, labels_tensor, pc_filename, aug_type

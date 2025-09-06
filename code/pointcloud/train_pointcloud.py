@@ -14,17 +14,17 @@ from pointnet_plus_plus import PointNetPlusPlusClassifier
 
 # Constants and model settings
 MODEL_NAME = "pointcloud"
-DATASET_DIR = "./dataset/"
+DATASET_DIR = "./dataset_agreed/"
 SAVE_MODEL_PATH = "./dataset/saved_models"
 SPLIT_OUTPUT_DIR = "split_output"
-TRAIN_DATA_DIR = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/train"
+TRAIN_DATA_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/train"
 TRAIN_DATA_DESCRIPTION_FILE = f"{TRAIN_DATA_DIR}/train_labels.xlsx"
-VAL_IMAGE_DIR = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/validate"
-VAL_DESC = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
-EPOCHS = 13
+VAL_IMAGE_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate"
+VAL_DESC = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
+EPOCHS = 150
 BATCH_SIZE = 32
 LR = 0.001
-NUM_POINTS = 2000
+NUM_POINTS = 2048
 # Number of output classes/labels
 NUM_LABELS = 4
 # Number of features used in the model now
@@ -56,7 +56,9 @@ def train_pointcloud_model():
     train_dataset = PointCloudDataset(
         pointcloud_dir=TRAIN_DATA_DIR,
         description_data=TRAIN_DATA_DESCRIPTION_FILE,
-        num_points=NUM_POINTS
+        num_points=NUM_POINTS,
+        target_per_class=623, 
+        train=True
     )
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     print(f"Dataloader for training data, nr of samples: {len(train_dataset)}, nr of batches: {len(train_dataloader)}")
@@ -65,7 +67,8 @@ def train_pointcloud_model():
     val_dataset = PointCloudDataset(
         pointcloud_dir=VAL_IMAGE_DIR,
         description_data=VAL_DESC,
-        num_points=NUM_POINTS
+        num_points=NUM_POINTS,
+        train = False
     )
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
     print(f"Dataloader for validation data, nr of samples: {len(val_dataset)}, nr of batches:{len(val_dataloader)}")
@@ -100,7 +103,7 @@ def train_pointcloud_model():
 
        #for validation run dont use gradient calculations
         with torch.no_grad():
-            for points, extra_features, labels, _ in val_dataloader:
+            for points, extra_features, labels, _ , aug_type in val_dataloader:
                 points, labels, extra_features = points.to(device), labels.to(device), extra_features.to(device)
                 
                 labels = labels.float()
@@ -151,7 +154,7 @@ def train_pointcloud_model():
 
         progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{EPOCHS}", leave=False)
 
-        for batch_idx, (points, extra_features, labels, filenames) in enumerate(progress_bar):
+        for batch_idx, (points, extra_features, labels, filenames, augtype) in enumerate(progress_bar):
             points, labels, extra_features = points.to(device), labels.to(device), extra_features.to(device)
             optimizer.zero_grad()
 
@@ -170,17 +173,15 @@ def train_pointcloud_model():
 
             progress_bar.set_postfix(loss=loss.item())
 
-            # Debug purposes, incomment to remove
-            label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves'] # Define your label names
+            label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves']
             probabilities = torch.sigmoid(outputs)
             # Convert probabilities to binary predictions (0 or 1 based on 0.5 threshold)
             preds_binary = (probabilities > 0.5).int()
 
             print(f"\n--- Epoch {epoch+1}, Batch {batch_idx+1} ---")
-            for i in range(labels.size(0)): # Iterate through each sample in the batch
+            for i in range(labels.size(0)):
                 prob_str = ', '.join(f'{label_names[j]}: {probabilities[i][j].item():.4f}' for j in range(len(label_names)))
-                # Using .cpu().numpy().tolist() for labels to avoid ValueError if not single scalar
-                print(f"File: {filenames[i]}, True: {labels[i].cpu().numpy().tolist()}, Pred: {preds_binary[i].cpu().numpy().tolist()}, Probs: {{{prob_str}}}")
+                print(f"File: {filenames[i]} , Aug: {augtype[i]},  True: {labels[i].cpu().numpy().tolist()}, Pred: {preds_binary[i].cpu().numpy().tolist()}, Probs: {{{prob_str}}}")
 
         acc = (correct_total_labels / total_samples * 100) if total_samples > 0 else 0.0
         print_epoch_summary(epoch + 1, total_loss, acc)

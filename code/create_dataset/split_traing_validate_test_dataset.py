@@ -4,25 +4,20 @@ import random
 import pandas as pd
 from PIL import Image
 import numpy as np
+from collections import defaultdict
 
-DATASET_DIR = "./dataset/"
+DATASET_DIR = "./dataset_agreed/"
 #Ratio of train and validate, so that the test set is the remaining part
 TRAIN_RATIO = 0.7
-VALIDATE_RATIO = 0.2
+VALIDATE_RATIO = 0.15
 GREYSCALE_DATA_FOLDER = f"{DATASET_DIR}greyscale"
-POINTCLOUD_DATA_FOLDER = f"{DATASET_DIR}pointcloud"
-DESCRIPTION_FILE = f"{DATASET_DIR}description_greyscale.xlsm"
+POINTCLOUD_DATA_FOLDER = f"{DATASET_DIR}pointcloud_filtered"
+DESCRIPTION_FILE = f"{DATASET_DIR}agreed_data.xlsx"
 OUTPUT_PATH = f"{DATASET_DIR}split_output"
 
 def get_image_pixel_stats(filepath):
     """
     Calculates the minimum, maximum, and difference in pixel values for a given greyscale image.
-
-    Args:
-        filepath (str): The greyscale segment image
-
-    Returns:
-        tuple: A tuple containing (min_pixel, max_pixel, diff_pixel)
     """
     try:
         img = Image.open(filepath).convert('L')
@@ -36,162 +31,131 @@ def get_image_pixel_stats(filepath):
         print(f"error processing image {filepath}: {e}")
         return None, None, None
 
-
 def split_dataset():
     """
-    Splits the combined dataset of greyscale images and point cloud files into
-    training, validation, and test subsets based on the ratios. It reads
-    metadata from an Excel description file, verifies the existence of corresponding
-    image and point cloud files, copies them to their respective new directories,
-    and generates separate Excel metadata files for each split.
+    Splits the dataset into train/validate/test.
+    Ensures that all segments from the same Original_Image_ID stay in the same split.
+    Keeps the 'ID' column from the original Excel file.
     """
     if not os.path.exists(DESCRIPTION_FILE):
         print(f"{DESCRIPTION_FILE} not found.")
         return
 
     df = pd.read_excel(DESCRIPTION_FILE)
-    if 'Original_Image_ID' not in df.columns or 'Segment_ID_In_Original' not in df.columns:
-        print("column ('Original_Image_ID', 'Segment_ID_In_Original') not found in excel file")
-        return
 
-    df['Original_Image_ID'] = pd.to_numeric(df['Original_Image_ID'], errors='coerce')
-    df['Segment_ID_In_Original'] = pd.to_numeric(df['Segment_ID_In_Original'], errors='coerce')
+    required_cols = [
+        "ID", "Original_Image_ID", "Segment_ID_In_Original",
+        "Min_Pixel_Value", "Max_Pixel_Value", "Pixel_Value_Difference",
+        "Good_layer", "Ditch", "Crater", "Waves"
+    ]
+    for col in required_cols:
+        if col not in df.columns:
+            print(f"Required column '{col}' not found in the Excel file")
+            return
 
-    initial_rows_before_id_drop = len(df)
-    df.dropna(subset=['Original_Image_ID', 'Segment_ID_In_Original'], inplace=True)
-    if len(df) < initial_rows_before_id_drop:
-        print(f"removed {initial_rows_before_id_drop - len(df)} rows due to missing or non-numeric Original_Image_ID or Segment_ID_In_Original header")
+    # Clean up IDs
+    df["Original_Image_ID"] = pd.to_numeric(df["Original_Image_ID"], errors="coerce")
+    df["Segment_ID_In_Original"] = pd.to_numeric(df["Segment_ID_In_Original"], errors="coerce")
+    df.dropna(subset=["Original_Image_ID", "Segment_ID_In_Original"], inplace=True)
 
-    df['Original_Image_ID'] = df['Original_Image_ID'].astype(np.int64)
-    df['Segment_ID_In_Original'] = df['Segment_ID_In_Original'].astype(np.int64)
+    df["Original_Image_ID"] = df["Original_Image_ID"].astype(int)
+    df["Segment_ID_In_Original"] = df["Segment_ID_In_Original"].astype(int)
 
+    # Filenames 
+    df['png_file_name'] = df.apply(
+        lambda row: f"{int(row['ID']):02d}_{int(row['Original_Image_ID']):02d}_box_{int(row['Segment_ID_In_Original'])}.png",
+        axis=1
+    )
     df['ply_file_name'] = df.apply(
-        lambda row: f"{int(row['Original_Image_ID']):02d}_box_{int(row['Segment_ID_In_Original']):d}.ply",
+        lambda row: f"{int(row['ID']):02d}_{int(row['Original_Image_ID']):02d}_box_{int(row['Segment_ID_In_Original'])}.ply",
         axis=1
     )
 
-    # Ensure these columns exist in the DataFrame before proceeding
-    required_label_cols = ['Good_layer', 'Crater', 'Ditch', 'Waves']
-    for col in required_label_cols:
-        if col not in df.columns:
-            print(f"Error: Required label column '{col}' not found in the Excel file.")
-            return
+    all_png_files = set(os.listdir(GREYSCALE_DATA_FOLDER))
+    all_ply_files = set(os.listdir(POINTCLOUD_DATA_FOLDER))
 
-    df_processed = df[['Original_Image_ID', 'Segment_ID_In_Original', 'ply_file_name'] + required_label_cols].copy()
-
-    all_png_files_in_folder = set(os.listdir(GREYSCALE_DATA_FOLDER))
-    all_ply_files_in_folder = set(os.listdir(POINTCLOUD_DATA_FOLDER))
-
-    valid_pairs_with_labels = []
-
-    for index, row in df_processed.iterrows():
-        png_file = f"{int(row['Original_Image_ID']):02d}_box_{int(row['Segment_ID_In_Original']):d}.png"
-        ply_file = row['ply_file_name']
-
-        png_exists = png_file in all_png_files_in_folder
-        ply_exists = ply_file in all_ply_files_in_folder
-
-        if not png_exists or not ply_exists:
+    valid_pairs = []
+    for _, row in df.iterrows():
+        if row["png_file_name"] not in all_png_files or row["ply_file_name"] not in all_ply_files:
             continue
-
-        valid_pairs_with_labels.append({
-            'png_file': png_file,
-            'ply_file': ply_file,
-            'Good_layer': row['Good_layer'],
-            'Ditch': row['Ditch'],
-            'Crater': row['Crater'],
-            'Waves': row['Waves']
+        valid_pairs.append({
+            "ID": row["ID"],
+            "Original_Image_ID": row["Original_Image_ID"],
+            "Segment_ID_In_Original": row["Segment_ID_In_Original"],
+            "png_file": row["png_file_name"],
+            "ply_file": row["ply_file_name"],
+            "Min_Pixel_Value": row["Min_Pixel_Value"],
+            "Max_Pixel_Value": row["Max_Pixel_Value"],
+            "Pixel_Value_Difference": row["Pixel_Value_Difference"],
+            "Good_layer": row["Good_layer"],
+            "Ditch": row["Ditch"],
+            "Crater": row["Crater"],
+            "Waves": row["Waves"]
         })
 
-    if not valid_pairs_with_labels:
-        print("No valid image and point cloud file pairs found matching entries in the description file.")
+    if not valid_pairs:
+        print("No valid pairs found")
         return
 
-    random.shuffle(valid_pairs_with_labels)
+    # Group by Original_Image_ID so that all segments of a sample are in same set
+    grouped = defaultdict(list)
+    for entry in valid_pairs:
+        grouped[entry["Original_Image_ID"]].append(entry)
 
-    total_files = len(valid_pairs_with_labels)
-    train_size = int(total_files * TRAIN_RATIO)
-    validate_size = int(total_files * VALIDATE_RATIO)
-    test_size = total_files - train_size - validate_size
+    all_groups = list(grouped.values())
+    random.shuffle(all_groups)
 
-    if test_size < 0:
-        print(f"train_ratio ({TRAIN_RATIO}) and validate_ratio ({VALIDATE_RATIO}) sum to more than 1")
-        return
+    total_groups = len(all_groups)
+    train_size = int(total_groups * TRAIN_RATIO)
+    validate_size = int(total_groups * VALIDATE_RATIO)
 
-    train_pairs = valid_pairs_with_labels[:train_size]
-    validate_pairs = valid_pairs_with_labels[train_size : train_size + validate_size]
-    test_pairs = valid_pairs_with_labels[train_size + validate_size :]
+    train_groups = all_groups[:train_size]
+    validate_groups = all_groups[train_size:train_size+validate_size]
+    test_groups = all_groups[train_size+validate_size:]
+
+    train_pairs = [item for group in train_groups for item in group]
+    validate_pairs = [item for group in validate_groups for item in group]
+    test_pairs = [item for group in test_groups for item in group]
 
     train_dir = os.path.join(OUTPUT_PATH, "train")
     validate_dir = os.path.join(OUTPUT_PATH, "validate")
     test_dir = os.path.join(OUTPUT_PATH, "test")
+    for split_dir in [train_dir, validate_dir, test_dir]:
+        os.makedirs(os.path.join(split_dir, "png"), exist_ok=True)
+        os.makedirs(os.path.join(split_dir, "ply"), exist_ok=True)
 
-    os.makedirs(os.path.join(train_dir, "png"), exist_ok=True)
-    os.makedirs(os.path.join(train_dir, "ply"), exist_ok=True)
-    os.makedirs(os.path.join(validate_dir, "png"), exist_ok=True)
-    os.makedirs(os.path.join(validate_dir, "ply"), exist_ok=True)
-    os.makedirs(os.path.join(test_dir, "png"), exist_ok=True)
-    os.makedirs(os.path.join(test_dir, "ply"), exist_ok=True)
+    def process_split(pairs, split_dir):
+        data_list = []
+        for file_pair in pairs:
+            shutil.copy(os.path.join(GREYSCALE_DATA_FOLDER, file_pair["png_file"]),
+                        os.path.join(split_dir, "png", file_pair["png_file"]))
+            shutil.copy(os.path.join(POINTCLOUD_DATA_FOLDER, file_pair["ply_file"]),
+                        os.path.join(split_dir, "ply", file_pair["ply_file"]))
+            data_list.append(file_pair)
+        return pd.DataFrame(data_list)
 
-    train_data_list = []
-    validate_data_list = []
-    test_data_list = []
+    train_df = process_split(train_pairs, train_dir)
+    validate_df = process_split(validate_pairs, validate_dir)
+    test_df = process_split(test_pairs, test_dir)
 
-    for file_pair in train_pairs + validate_pairs + test_pairs:
-        png_file = file_pair['png_file']
-        ply_file = file_pair['ply_file']
+    train_df.to_excel(os.path.join(train_dir, "train_labels.xlsx"), index=False)
+    validate_df.to_excel(os.path.join(validate_dir, "validate_labels.xlsx"), index=False)
+    test_df.to_excel(os.path.join(test_dir, "test_labels.xlsx"), index=False)
 
-        src_png_path = os.path.join(GREYSCALE_DATA_FOLDER, png_file)
-        src_ply_path = os.path.join(POINTCLOUD_DATA_FOLDER, ply_file)
+    print("Datasplit complete")
+    print(f"Train: {len(train_df)} segments from {len(train_groups)} images")
+    print(f"Validate: {len(validate_df)} segments from {len(validate_groups)} images")
+    print(f"Test: {len(test_df)} segments from {len(test_groups)} images")
+    print_class_distribution(validate_df, "Validate")
+    print_class_distribution(test_df, "Test")
+    print_class_distribution(train_df, "Train")
 
-        min_p, max_p, diff_p = get_image_pixel_stats(src_png_path)
-        if min_p is None:
-            print(f"Skipping pair {png_file} due to image loading error for {png_file}")
-            continue
-
-        file_data = {
-            'File_Name_PNG': png_file,
-            'File_Name_PLY': ply_file,
-            'Min_Pixel_Value': min_p,
-            'Max_Pixel_Value': max_p,
-            'Pixel_Value_Difference': diff_p,
-            'Good_layer': file_pair['Good_layer'],
-            'Ditch': file_pair['Ditch'],
-            'Crater': file_pair['Crater'],
-            'Waves': file_pair['Waves']
-        }
-
-        if file_pair in train_pairs:
-            shutil.copy(src_png_path, os.path.join(train_dir, "png", png_file))
-            shutil.copy(src_ply_path, os.path.join(train_dir, "ply", ply_file))
-            train_data_list.append(file_data)
-        elif file_pair in validate_pairs:
-            shutil.copy(src_png_path, os.path.join(validate_dir, "png", png_file))
-            shutil.copy(src_ply_path, os.path.join(validate_dir, "ply", ply_file))
-            validate_data_list.append(file_data)
-        elif file_pair in test_pairs:
-            shutil.copy(src_png_path, os.path.join(test_dir, "png", png_file))
-            shutil.copy(src_ply_path, os.path.join(test_dir, "ply", ply_file))
-            test_data_list.append(file_data)
-        else:
-            print(f"files {png_file} and {ply_file} not assigned to any split")
-
-    train_df = pd.DataFrame(train_data_list)
-    validate_df = pd.DataFrame(validate_data_list)
-    test_df = pd.DataFrame(test_data_list)
-
-    train_excel_path = os.path.join(train_dir, "train_labels.xlsx")
-    validate_excel_path = os.path.join(validate_dir, "validate_labels.xlsx")
-    test_excel_path = os.path.join(test_dir, "test_labels.xlsx")
-
-    train_df.to_excel(train_excel_path, index=False)
-    validate_df.to_excel(validate_excel_path, index=False)
-    test_df.to_excel(test_excel_path, index=False)
-
-    print(f"Datasplit complete")
-    print(f"Train: {len(train_df)} file pairs saved to {train_dir}")
-    print(f"Validate: {len(validate_df)} file pairs saved to {validate_dir}")
-    print(f"Test: {len(test_df)} file pairs saved to {test_dir}")
+#Print class distributions over all the sets
+def print_class_distribution(df, split_name):
+    print(f"\nClass distribution in {split_name}:")
+    for col in ["Good_layer", "Ditch", "Crater", "Waves"]:
+        count = df[col].sum()
+        print(f"  {col}: {count} segments")
 
 
 def create_empty_description_file():
@@ -210,14 +174,17 @@ def create_empty_description_file():
         print(f"Created empty description file at: {DESCRIPTION_FILE}")
 
     except Exception as e:
-        print(f"Error creating empty description file at {DESCRIPTION_FILE}: {e}")
+        print(f"Creating empty description file at {DESCRIPTION_FILE}: {e}")
 
 if __name__ == "__main__":
     os.makedirs(os.path.dirname(DESCRIPTION_FILE), exist_ok=True)
     if not os.path.exists(DESCRIPTION_FILE):
         create_empty_description_file()
-        print("\nNo description file found. An empty description file has been created. Please populate it with your data.")
+        print("\nNo description file found")
         exit()
 
     os.makedirs(OUTPUT_PATH, exist_ok=True)
     split_dataset()
+
+
+

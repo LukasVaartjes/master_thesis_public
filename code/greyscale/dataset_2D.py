@@ -16,12 +16,12 @@ class ImageDataset(Dataset):
     - Load images from specified dir
     - Preprocess images resize and convert to tensors.
     """
-    def __init__(self, image_dir, description_data, target_size=(150, 150), transform=None):
+    def __init__(self, image_dir, description_data, target_size=(150, 150), transform=None, target_per_class=560, train=True):
         self.image_dir = image_dir 
         self.target_size = target_size
         self.transform = transform
-
-        self.metadata = pd.read_excel(description_data)
+        self.train = train
+        self.target_per_class = target_per_class
 
         self.metadata = pd.read_excel(description_data)
 
@@ -44,11 +44,40 @@ class ImageDataset(Dataset):
         missing_label_cols = [col for col in self.label_cols if col not in self.metadata.columns]
         if missing_label_cols:
             raise ValueError(f"missing expected label columns in {description_data}: {missing_label_cols}, column '{self.label_cols[0]}' does not exists.")
+        
+        # Add augmentation type
+        self.metadata["aug_type"] = "none"
+
+        # Balance dataset only for training
+        if self.train:
+            augmented_rows = []
+            for class_idx, class_name in enumerate(self.label_cols):
+                class_subset = self.metadata[self.metadata[class_name] == 1]
+                current_count = len(class_subset)
+                needed = max(0, self.target_per_class - current_count)
+
+                if needed > 0 and len(class_subset) > 0:
+                    for _ in range(needed):
+                        row = class_subset.sample(n=1).iloc[0].copy()
+                        row["aug_type"] = np.random.choice(["rotate180", "flip_x", "flip_y", "combo"])
+                        augmented_rows.append(row)
+
+            if augmented_rows:
+                self.metadata = pd.concat([self.metadata, pd.DataFrame(augmented_rows)], ignore_index=True)
+                self.image_files = self.metadata['File_Name_PNG'].tolist()
+
+        # Show label distribution (count how many samples per class)
+        label_counts = self.metadata[self.label_cols].sum().to_dict()
+        print(f"\n[{self.__class__.__name__}] Dataset label distribution:")
+        for lbl, cnt in label_counts.items():
+            print(f"  {lbl}: {int(cnt)} samples (target {self.target_per_class if self.train else 'N/A'})")
+        print(f"  Total samples: {len(self.metadata)}\n")
 
     def __len__(self):
         return len(self.image_files)
 
     def __getitem__(self, idx):
+        row = self.metadata.iloc[idx]
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
@@ -66,6 +95,18 @@ class ImageDataset(Dataset):
         image = np.expand_dims(image, axis=0) 
 
         image_tensor = torch.from_numpy(image)
+
+        aug_type = row["aug_type"]
+        if aug_type == "rotate180":
+            image_tensor = torch.rot90(image_tensor, 2, [1,2])
+        elif aug_type == "flip_x":
+            image_tensor = torch.flip(image_tensor, [1])
+        elif aug_type == "flip_y":
+            image_tensor = torch.flip(image_tensor, [2])
+        elif aug_type == "combo":
+            image_tensor = torch.flip(image_tensor, [1])
+            image_tensor = torch.rot90(image_tensor, 2, [1,2])
+
 
         labels = self.metadata.iloc[idx][self.label_cols].to_numpy(dtype=np.float32)
         label_tensor = torch.tensor(labels, dtype=torch.float32)

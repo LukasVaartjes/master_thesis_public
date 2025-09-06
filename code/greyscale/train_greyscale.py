@@ -14,14 +14,14 @@ from cnn_model_2d import SimpleImageCNN
 
 # Constants and model settings
 MODEL_NAME = "greyscale"
-DATASET_DIR = "./dataset/"
+DATASET_DIR = "./dataset_agreed/"
 SAVE_MODEL_PATH = "./dataset/saved_models"
 SPLIT_OUTPUT_DIR = "split_output"
-TRAIN_DATA_DIR = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/train"
+TRAIN_DATA_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/train"
 TRAIN_DATA_DESCRIPTION_FILE = f"{TRAIN_DATA_DIR}/train_labels.xlsx"
-VAL_IMAGE_DIR = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/validate"
-VAL_DESC = f"{DATASET_DIR}/{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
-EPOCHS = 50
+VAL_IMAGE_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate"
+VAL_DESC = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
+EPOCHS = 150
 BATCH_SIZE = 32
 LR = 0.001
 IMAGE_SIZE = (150, 150)
