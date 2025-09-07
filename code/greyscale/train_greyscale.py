@@ -82,6 +82,52 @@ def log_epoch_summary_to_excel(file_path, epoch, total_loss, accuracy, val_accur
     except Exception as e:
         print(f"Logging batch details to Excel: error {e}")
 
+def log_per_label_accuracy_to_excel(file_path, epoch, label_names, accuracy_per_label):
+    """Logs accuracy for each label in a separate sheet"""
+    try:
+        workbook = openpyxl.load_workbook(file_path) if os.path.exists(file_path) else openpyxl.Workbook()
+        if 'Per Label Accuracy' not in workbook.sheetnames:
+            sheet = workbook.create_sheet('Per Label Accuracy')
+            sheet.append(["Epoch"] + label_names)
+        else:
+            sheet = workbook['Per Label Accuracy']
+
+        # Convert torch tensor to list of floats
+        accuracy_list = [round(a.item(), 2) for a in accuracy_per_label]
+        sheet.append([epoch] + accuracy_list)
+        workbook.save(file_path)
+        print(f"Logged per-label accuracy for epoch {epoch} to Excel")
+    except Exception as e:
+        print(f"Error {e}")
+
+def log_val_predictions_to_excel(file_path, filenames, labels, preds_binary, probabilities, label_names):
+    """Logs validation set predictions to Excel with a blank line between runs"""
+    import openpyxl
+    import os
+
+    try:
+        workbook = openpyxl.load_workbook(file_path) if os.path.exists(file_path) else openpyxl.Workbook()
+        if 'Validation Predictions' not in workbook.sheetnames:
+            sheet = workbook.create_sheet('Validation Predictions')
+            sheet.append(["Filename", "True Labels", "Predicted Labels"] + label_names)
+        else:
+            sheet = workbook['Validation Predictions']
+
+        if sheet.max_row > 1:
+            sheet.append([""] * (3 + len(label_names)))  # 3 columns + num labels
+
+        for i in range(len(filenames)):
+            true_labels_str = ','.join(map(str, labels[i].cpu().numpy()))
+            pred_labels_str = ','.join(map(str, preds_binary[i].cpu().numpy()))
+            probs_str = [round(probabilities[i][j].item(), 4) for j in range(len(label_names))]
+            sheet.append([filenames[i], true_labels_str, pred_labels_str] + probs_str)
+
+        workbook.save(file_path)
+        print(f"Logged validation predictions to Excel")
+    except Exception as e:
+        print(f"Error {e}")
+
+
 # RUns the entire training process for the image classification model
 # 1. Sets up directories to save model and plots
 # 2. Uses either gpu or cpu for training if available
@@ -151,10 +197,15 @@ def train_image_model():
         all_labels_correct = 0
         total_samples = 0
         validation_loss = 0.0 
-        
+        # Compute predictions for valiudate set
+        all_filenames = []
+        all_labels = []
+        all_preds = []
+        all_probs = []
+                
         #for validation run dont use gradient calculations
         with torch.no_grad():
-            for images, extra_features, labels, _ , augtype in val_dataloader:
+            for images, extra_features, labels, filenames, augtype in val_dataloader:
                 images, labels, extra_features = images.to(device), labels.to(device), extra_features.to(device)
                 outputs = model(images, extra_features)
 
@@ -162,16 +213,22 @@ def train_image_model():
                 loss = criterion(outputs, labels)
                 validation_loss += loss.item()
 
-                preds = torch.sigmoid(outputs) > 0.5
+                # Probabilities and binary predictions
+                probabilities = torch.sigmoid(outputs)
+                preds_binary = (probabilities > 0.5).int()
 
-                # Calculate accuracy of predictions per label 
-                correct_predictions_per_label += (preds == labels).sum(dim=0)
+                # Accuracy calculations
+                correct_predictions_per_label += (preds_binary == labels).sum(dim=0)
                 total_predictions_per_label += labels.size(0)
-                
-                # Calculate accuracy of predictions per instance (all labels of single datapoint)
-                all_labels_correct += (preds == labels).all(dim=1).sum().item()
+                all_labels_correct += (preds_binary == labels).all(dim=1).sum().item()
                 total_samples += labels.size(0)
-                
+
+                # Append for logging
+                all_filenames.extend(filenames)
+                all_labels.append(labels.cpu())
+                all_preds.append(preds_binary.cpu())
+                all_probs.append(probabilities.cpu())
+                        
         # Calculate average validation loss
         avg_validation_loss = validation_loss / len(val_dataloader)
 
@@ -182,6 +239,20 @@ def train_image_model():
         instance_accuracy = all_labels_correct / total_samples * 100
 
         
+        accuracy_per_label = (correct_predictions_per_label / total_predictions_per_label) * 100
+        mean_accuracy = torch.mean(accuracy_per_label).item()
+        instance_accuracy = all_labels_correct / total_samples * 100
+
+        # Log per-label accuracy
+        excel_log_path = os.path.join(save_dir, "training_log.xlsx")
+        label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves']
+        log_per_label_accuracy_to_excel(excel_log_path, epoch+1, label_names, accuracy_per_label)
+
+        all_labels = torch.cat(all_labels)
+        all_preds = torch.cat(all_preds)
+        all_probs = torch.cat(all_probs)
+        log_val_predictions_to_excel(excel_log_path, all_filenames, all_labels, all_preds, all_probs, label_names)
+
 
         print(f"Validation - Mean Label Accuracy: {mean_accuracy:.2f}% ||| Instance Accuracy: {instance_accuracy:.2f}% | Validation Loss: {avg_validation_loss:.4f}")
         return instance_accuracy, avg_validation_loss

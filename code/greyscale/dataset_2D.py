@@ -17,7 +17,7 @@ class ImageDataset(Dataset):
     - Preprocess images resize and convert to tensors.
     """
     def __init__(self, image_dir, description_data, target_size=(150, 150), transform=None, target_per_class=623, train=True):
-        self.image_dir = image_dir 
+        self.image_dir = image_dir
         self.target_size = target_size
         self.transform = transform
         self.train = train
@@ -25,48 +25,47 @@ class ImageDataset(Dataset):
 
         self.metadata = pd.read_excel(description_data)
 
-        # Ensure the image directory exists
-        if not os.path.isdir(self.image_dir):
-            raise FileNotFoundError(f"Image directory not found at: '{self.image_dir}'")
-
-        # Get all existing .png files in the image directory
         existing_img_files = {f for f in os.listdir(self.image_dir) if f.endswith('.png')}
-        
-        # Only include entries where the PNG file exists in the image directory
         self.metadata = self.metadata[self.metadata['png_file'].isin(existing_img_files)].reset_index(drop=True)
-        self.image_files = self.metadata['png_file'].tolist()
 
-        if not self.image_files:
-            raise ValueError(f"No valid image files were found in '{self.image_dir}' that match entries in '{description_data}' after filtering.")
+        if self.metadata.empty:
+            raise ValueError("No valid image files found in the directory.")
 
         self.label_cols = ['Good_layer', 'Ditch', 'Crater', 'Waves']
-        
         missing_label_cols = [col for col in self.label_cols if col not in self.metadata.columns]
         if missing_label_cols:
-            raise ValueError(f"missing expected label columns in {description_data}: {missing_label_cols}, column '{self.label_cols[0]}' does not exists.")
-        
-        # Add augmentation type
+            raise ValueError(f"Missing label columns: {missing_label_cols}")
+
         self.metadata["aug_type"] = "none"
 
-        # Balance dataset only for training
         if self.train:
-            augmented_rows = []
-            for class_idx, class_name in enumerate(self.label_cols):
-                class_subset = self.metadata[self.metadata[class_name] == 1]
-                current_count = len(class_subset)
-                needed = max(0, self.target_per_class - current_count)
+            balanced_rows = []
 
-                if needed > 0 and len(class_subset) > 0:
+            for class_name in self.label_cols:
+                class_subset = self.metadata[self.metadata[class_name] == 1].copy()
+                current_count = len(class_subset)
+
+                if current_count >= self.target_per_class:
+                    # Randomly sample target_per_class
+                    balanced_rows.append(class_subset.sample(n=self.target_per_class, replace=False))
+                else:
+                    # Keep all existing and augment the rest
+                    balanced_rows.append(class_subset)
+                    needed = self.target_per_class - current_count
+                    augmented_rows = []
                     for _ in range(needed):
                         row = class_subset.sample(n=1).iloc[0].copy()
                         row["aug_type"] = np.random.choice(["rotate180", "flip_x", "flip_y", "combo"])
                         augmented_rows.append(row)
+                    if augmented_rows:
+                        balanced_rows.append(pd.DataFrame(augmented_rows))
 
-            if augmented_rows:
-                self.metadata = pd.concat([self.metadata, pd.DataFrame(augmented_rows)], ignore_index=True)
-                self.image_files = self.metadata['png_file'].tolist()
+            # Combine all classes into final dataset
+            self.metadata = pd.concat(balanced_rows, ignore_index=True)
 
-        # Show label distribution (count how many samples per class)
+        self.image_files = self.metadata['png_file'].tolist()
+
+        # Show dataset distribution
         label_counts = self.metadata[self.label_cols].sum().to_dict()
         print(f"\n[{self.__class__.__name__}] Dataset label distribution:")
         for lbl, cnt in label_counts.items():
