@@ -23,9 +23,9 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 
 # Global variables
 results = []
-MODEL_NAME = "greyscale"
-DATASET_DIR = "./dataset"
-MODEL_PATH = "dataset/saved_models/greyscale_run_1/"
+MODEL_NAME = "greyscale_run_2"
+DATASET_DIR = "./dataset_agreed"
+MODEL_PATH = "dataset_agreed/saved_models/greyscale_run_1/"
 IMAGE_SIZE = (150,150)
 NUM_LABELS = 4
 EXTRA_FEATURE = 0
@@ -57,6 +57,8 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
     DESCRIPTION_FILE = f"{DATASET_DIR}/split_output/test/test_labels.xlsx"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
+    epoch_output_dir = Path(f"{DATASET_DIR}/saved_models/{MODEL_NAME}/epoch_{epoch}")
+    epoch_output_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialize dataset for the test set
     # set batch size tp 1 for individual image processing
@@ -64,7 +66,8 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
     dataset = ImageDataset(
         image_dir=test_image_dir,
         description_data=DESCRIPTION_FILE,
-        target_size=IMAGE_SIZE if IMAGE_SIZE else (128, 128)
+        target_size=IMAGE_SIZE if IMAGE_SIZE else (128, 128),
+        train=False,
     )
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 
@@ -82,7 +85,7 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
     
     # Disable gradient computation for inference to save memory
     with torch.no_grad():
-        for i, (images, extra_features, true_labels, img_file) in enumerate(dataloader):
+        for i, (images, extra_features, true_labels, img_file, _) in enumerate(dataloader):
 
             if isinstance(img_file, (tuple, list)):
                 img_file = img_file[0]
@@ -183,10 +186,56 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
         plt.title(f'Confusion Matrix for {label_name} (Epoch {epoch})')
         plt.xlabel('Predicted Label')
         plt.ylabel('True Label')
-        cm_output_path = f"{DATASET_DIR}/saved_models{MODEL_NAME}/confusion_matrix_{label_name}_epoch_{epoch}.png"
+        cm_output_path = epoch_output_dir / f"confusion_matrix_{label_name}.png"
         plt.savefig(cm_output_path)
         plt.close()
         print(f"Confusion matrix for {label_name} saved to {cm_output_path}")
+
+    #multilabel consufion mayrix
+    num_labels = len(dataset.label_cols)
+    multi_label_cm = np.zeros((num_labels, num_labels), dtype=int)
+    for true_vec, pred_vec in zip(all_true_labels, all_predicted_binary_labels):
+        true_indices = np.where(true_vec == 1)[0]
+        pred_indices = np.where(pred_vec == 1)[0]
+        for t in true_indices:
+            for p in pred_indices:
+                multi_label_cm[t, p] += 1
+
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(multi_label_cm, annot=True, fmt='d', cmap='Blues',
+                xticklabels=dataset.label_cols,
+                yticklabels=dataset.label_cols)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title(f'Multi-label Confusion Matrix (Epoch {epoch})')
+    multi_label_cm_path = epoch_output_dir / "multi_label_confusion_matrix.png"
+    plt.savefig(multi_label_cm_path)
+    plt.close()
+    print(f"Multi-label confusion matrix saved to {multi_label_cm_path}")
+
+    #Mutliclass confision matrix
+    true_classes = np.argmax(all_true_labels, axis=1)
+    pred_classes = np.argmax(all_predicted_binary_labels, axis=1)
+
+    multi_class_cm = confusion_matrix(true_classes, pred_classes)
+
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(multi_class_cm, annot=True, fmt='d', cmap='Oranges',
+                xticklabels=dataset.label_cols,
+                yticklabels=dataset.label_cols)
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title(f'Multi-class Confusion Matrix (Epoch {epoch})')
+    multi_class_cm_path = epoch_output_dir / "multi_class_confusion_matrix.png"
+    plt.savefig(multi_class_cm_path)
+    plt.close()
+    print(f"Multi-class confusion matrix saved to {multi_class_cm_path}")
+
+    # Calculate overall mean metrics
+    mean_label_accuracy = np.mean(per_label_accuracy)
+    mean_label_f1 = np.mean(per_label_f1)
+    print(f"\nMean Label Accuracy (avg per defect label): {mean_label_accuracy:.2f}%")
+    print(f"Mean Label F1 Score (avg per defect label): {mean_label_f1:.4f}")
 
     # Calculate overall mean metrics
     mean_label_accuracy = np.mean(per_label_accuracy)
@@ -205,11 +254,10 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
         roc_auc_lbl = auc(fpr_lbl, tpr_lbl)
         roc_data[label_name] = {'fpr': fpr_lbl, 'tpr': tpr_lbl, 'auc': roc_auc_lbl}
 
-    output_dir = Path(f"{DATASET_DIR}/saved_models/{MODEL_NAME}/")
-    output_dir.mkdir(parents=True, exist_ok=True)
+
     
     # Save results to a text file
-    txt_output_path = output_dir / "multi_label_scores.txt"
+    txt_output_path = epoch_output_dir / "multi_label_scores.txt"
     with open(txt_output_path, "a") as f:
         f.write(f"\n--- Epoch {epoch}, Model: {MODEL_NAME} ---\n")
         f.write(f"Mean Label Accuracy: {mean_label_accuracy:.2f}%\n")
@@ -235,7 +283,7 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
 
     df_results = pd.DataFrame(df_results_data)
     
-    excel_output_path = output_dir / f"per_file_predictions_epoch_{epoch}.xlsx"
+    excel_output_path = epoch_output_dir / f"per_file_predictions_epoch_{epoch}.xlsx"
     
     writer = pd.ExcelWriter(excel_output_path, engine='xlsxwriter')
 
@@ -254,7 +302,7 @@ if __name__ == "__main__":
     all_epochs_roc_data = [] 
 
     # Iterate through saved model checkpoints, they are saved every 10 epochs
-    for epoch in range(0, 31, 10):
+    for epoch in range(0, 151, 10):
         MODEL_PATH = f"dataset_agreed/saved_models/{MODEL_NAME}/model_epoch_{epoch}.pth"
         # if model does not exist, skip
         if not os.path.exists(MODEL_PATH):

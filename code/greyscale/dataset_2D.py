@@ -22,9 +22,10 @@ class ImageDataset(Dataset):
         self.transform = transform
         self.train = train
         self.target_per_class = target_per_class
+        
 
         self.metadata = pd.read_excel(description_data)
-
+        
         existing_img_files = {f for f in os.listdir(self.image_dir) if f.endswith('.png')}
         self.metadata = self.metadata[self.metadata['png_file'].isin(existing_img_files)].reset_index(drop=True)
 
