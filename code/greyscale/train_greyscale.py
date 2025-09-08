@@ -11,7 +11,7 @@ from tqdm import tqdm
 from torch import nn
 from dataset_2D import ImageDataset
 from cnn_model_2d import SimpleImageCNN
-import openpyxl
+import csv
 
 # Constants and model settings
 MODEL_NAME = "greyscale"
@@ -32,101 +32,57 @@ NUM_LABELS = 4
 EXTRA_FEATURES = 0
 
 
-def log_batch_details_to_excel(file_path, epoch, batch_idx, filenames, aug_types, labels, preds_binary, probabilities, label_names):
-    """Logs detailed batch data to excel file"""
-    try:
-        workbook = openpyxl.load_workbook(file_path) if os.path.exists(file_path) else openpyxl.Workbook()
-        if 'Batch Details' not in workbook.sheetnames:
-            sheet = workbook.create_sheet('Batch Details')
-            sheet.append(["Epoch", "Batch", "Filename", "Augmentation", "True Labels", "Predicted Labels", "Probabilities"])
-        else:
-            sheet = workbook['Batch Details']
 
-        for i in range(len(filenames)):
-            true_labels_str = ', '.join(map(str, labels[i].cpu().numpy()))
-            pred_labels_str = ', '.join(map(str, preds_binary[i].cpu().numpy()))
-            probs_str = ', '.join(f'{label_names[j]}: {probabilities[i][j].item():.4f}' for j in range(len(label_names)))
-            sheet.append([epoch, batch_idx, filenames[i], aug_types[i], true_labels_str, pred_labels_str, probs_str])
-        
-        workbook.save(file_path)
-        print(f"Logged batch {batch_idx} details to Excel")
+def log_epoch_details_to_excel(file_path, epoch, epoch_logs, label_names):
+    file_exists = os.path.exists(file_path)
+    with open(file_path, mode='a', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            # Write header
+            writer.writerow(["Epoch", "Batch", "Filename", "Augmentation", 
+                             "True Labels", "Predicted Labels", "Probabilities"])
+        for entry in epoch_logs:
+            for i in range(len(entry["filenames"])):
+                true_labels_str = ','.join(map(str, entry["labels"][i].cpu().numpy()))
+                pred_labels_str = ','.join(map(str, entry["preds_binary"][i].cpu().numpy()))
+                probs_str = ','.join(f'{label_names[j]}:{entry["probabilities"][i][j].item():.4f}'
+                                     for j in range(len(label_names)))
+                writer.writerow([epoch, entry["batch_idx"], entry["filenames"][i],
+                                 entry["aug_types"][i], true_labels_str, pred_labels_str, probs_str])
 
-    except Exception as e:
-        print(f"Logging batch details to Excel: error {e}")
+    print(f"Logged all details for epoch {epoch} to Excel")
 
 def log_epoch_summary_to_excel(file_path, epoch, total_loss, accuracy, val_accuracy=None, val_loss=None):
-    """Logs training and validation data to excel file"""
-    try:
-        workbook = openpyxl.load_workbook(file_path) if os.path.exists(file_path) else openpyxl.Workbook()
-        if 'Training Summary' not in workbook.sheetnames:
-            sheet = workbook.create_sheet('Training Summary')
-            sheet.append(["Epoch", "Training Loss", "Training Accuracy", "Validation Accuracy", "Validation Loss"])
-        else:
-            sheet = workbook['Training Summary']
+    file_exists = os.path.exists(file_path)
+    with open(file_path, mode='a', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["Epoch", "Training Loss", "Training Accuracy", 
+                             "Validation Accuracy", "Validation Loss"])
+        writer.writerow([epoch, total_loss, accuracy, val_accuracy, val_loss])
 
-        row_found = False
-        for row in sheet.iter_rows(min_row=2, values_only=False):
-            if row[0].value == epoch:
-                row[3].value = val_accuracy
-                row[4].value = val_loss
-                row_found = True
-                break
-        
-        if not row_found:
-            # Append a new row for the epoch
-            sheet.append([epoch, total_loss, accuracy, val_accuracy, val_loss])
-            
-        workbook.save(file_path)
-        print(f"Logged epoch {epoch} summary to Excel")
-
-    except Exception as e:
-        print(f"Logging batch details to Excel: error {e}")
 
 def log_per_label_accuracy_to_excel(file_path, epoch, label_names, accuracy_per_label):
-    """Logs accuracy for each label in a separate sheet"""
-    try:
-        workbook = openpyxl.load_workbook(file_path) if os.path.exists(file_path) else openpyxl.Workbook()
-        if 'Per Label Accuracy' not in workbook.sheetnames:
-            sheet = workbook.create_sheet('Per Label Accuracy')
-            sheet.append(["Epoch"] + label_names)
-        else:
-            sheet = workbook['Per Label Accuracy']
-
-        # Convert torch tensor to list of floats
+    file_exists = os.path.exists(file_path)
+    with open(file_path, mode='a', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["Epoch"] + label_names)
         accuracy_list = [round(a.item(), 2) for a in accuracy_per_label]
-        sheet.append([epoch] + accuracy_list)
-        workbook.save(file_path)
-        print(f"Logged per-label accuracy for epoch {epoch} to Excel")
-    except Exception as e:
-        print(f"Error {e}")
+        writer.writerow([epoch] + accuracy_list)
+
 
 def log_val_predictions_to_excel(file_path, filenames, labels, preds_binary, probabilities, label_names):
-    """Logs validation set predictions to Excel with a blank line between runs"""
-    import openpyxl
-    import os
-
-    try:
-        workbook = openpyxl.load_workbook(file_path) if os.path.exists(file_path) else openpyxl.Workbook()
-        if 'Validation Predictions' not in workbook.sheetnames:
-            sheet = workbook.create_sheet('Validation Predictions')
-            sheet.append(["Filename", "True Labels", "Predicted Labels"] + label_names)
-        else:
-            sheet = workbook['Validation Predictions']
-
-        if sheet.max_row > 1:
-            sheet.append([""] * (3 + len(label_names)))  # 3 columns + num labels
-
+    file_exists = os.path.exists(file_path)
+    with open(file_path, mode='a', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["Filename", "True Labels", "Predicted Labels"] + label_names)
         for i in range(len(filenames)):
             true_labels_str = ','.join(map(str, labels[i].cpu().numpy()))
             pred_labels_str = ','.join(map(str, preds_binary[i].cpu().numpy()))
             probs_str = [round(probabilities[i][j].item(), 4) for j in range(len(label_names))]
-            sheet.append([filenames[i], true_labels_str, pred_labels_str] + probs_str)
-
-        workbook.save(file_path)
-        print(f"Logged validation predictions to Excel")
-    except Exception as e:
-        print(f"Error {e}")
-
+            writer.writerow([filenames[i], true_labels_str, pred_labels_str] + probs_str)
 
 # RUns the entire training process for the image classification model
 # 1. Sets up directories to save model and plots
@@ -141,6 +97,10 @@ def log_val_predictions_to_excel(file_path, filenames, labels, preds_binary, pro
 # 10. Generates and saves a plot visualizing training loss, validation accuracy, and validation loss over epochs.
 def train_image_model():
     save_dir = f"{SAVE_MODEL_PATH}/{MODEL_NAME}"
+    BATCH_LOG_CSV = os.path.join(save_dir, "batch_details.csv")
+    EPOCH_SUMMARY_CSV = os.path.join(save_dir, "epoch_summary.csv")
+    PER_LABEL_ACC_CSV = os.path.join(save_dir, "per_label_accuracy.csv")
+    VAL_PRED_CSV = os.path.join(save_dir, "validation_predictions.csv")
     os.makedirs(save_dir, exist_ok=True)
 
     # Run on gpu if available, otherwise use cpu
@@ -153,7 +113,7 @@ def train_image_model():
         description_data=TRAIN_DATA_DESCRIPTION_FILE,
         target_size=IMAGE_SIZE, 
         target_per_class=623, 
-        train=True
+        train=True,
     )
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     print(f"Dataloader for training data, nr of batches: {len(train_dataloader)}")
@@ -244,14 +204,13 @@ def train_image_model():
         instance_accuracy = all_labels_correct / total_samples * 100
 
         # Log per-label accuracy
-        excel_log_path = os.path.join(save_dir, "training_log.xlsx")
         label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves']
-        log_per_label_accuracy_to_excel(excel_log_path, epoch+1, label_names, accuracy_per_label)
+        log_per_label_accuracy_to_excel(PER_LABEL_ACC_CSV, epoch+1, label_names, accuracy_per_label)
 
         all_labels = torch.cat(all_labels)
         all_preds = torch.cat(all_preds)
         all_probs = torch.cat(all_probs)
-        log_val_predictions_to_excel(excel_log_path, all_filenames, all_labels, all_preds, all_probs, label_names)
+        log_val_predictions_to_excel(VAL_PRED_CSV, all_filenames, all_labels, all_preds, all_probs, label_names)
 
 
         print(f"Validation - Mean Label Accuracy: {mean_accuracy:.2f}% ||| Instance Accuracy: {instance_accuracy:.2f}% | Validation Loss: {avg_validation_loss:.4f}")
@@ -262,20 +221,19 @@ def train_image_model():
     val_acc_array = []
     val_loss_array = []
 
+    # excel_log_path = os.path.join(save_dir, "training_log.csv")
+    label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves']
     for epoch in range(EPOCHS):
         model.train()
         total_loss = 0
         correct_total_labels = 0
         total_samples = 0
-
-        print(f"Epoch [{epoch+1}/{EPOCHS}] - Starting training:")
-
         progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{EPOCHS}", leave=False)
+        epoch_logs = []
 
         for batch_idx, (images, extra_features, labels, filenames, augtype) in enumerate(progress_bar):
             images, labels, extra_features = images.to(device), labels.to(device), extra_features.to(device)
             optimizer.zero_grad()
-            excel_log_path = os.path.join(save_dir, "training_log.xlsx")   
 
             outputs = model(images, extra_features)
             loss = criterion(outputs, labels)
@@ -283,43 +241,33 @@ def train_image_model():
             optimizer.step()
 
             total_loss += loss.item()
-
             preds = torch.sigmoid(outputs) > 0.5
             correct_total_labels += (preds == labels).all(dim=1).sum().item()
             total_samples += labels.size(0)
 
             progress_bar.set_postfix(loss=loss.item())
-            
-            # print details per batch during training for debugging
-            # Convert logits to probabilities (values between 0 and 1)
-            label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves']
-            probabilities = torch.sigmoid(outputs)
-            # Convert probabilities to binary predictions (0 or 1 based on 0.5 threshold)
-            preds_binary = (probabilities > 0.5).int() 
 
-            label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves']
             probabilities = torch.sigmoid(outputs)
-            preds_binary = (probabilities > 0.5).int() 
+            preds_binary = (probabilities > 0.5).int()
 
-            # Log batch details to Excel
-            log_batch_details_to_excel(
-                excel_log_path, 
-                epoch + 1, 
-                batch_idx + 1, 
-                filenames, 
-                augtype, 
-                labels, 
-                preds_binary, 
-                probabilities, 
-                label_names
-            )
+            # Collect batch info 
+            epoch_logs.append({
+                "batch_idx": batch_idx + 1,
+                "filenames": filenames,
+                "aug_types": augtype,
+                "labels": labels,
+                "preds_binary": preds_binary,
+                "probabilities": probabilities
+            })
+
+        log_epoch_details_to_excel(BATCH_LOG_CSV, epoch + 1, epoch_logs, label_names)
 
 
         acc = correct_total_labels / total_samples * 100
          # Log epoch summary after each epoch
         avg_loss = total_loss / len(train_dataloader)
         # Log epoch summary after each epoch
-        log_epoch_summary_to_excel(excel_log_path, epoch + 1, avg_loss, acc)
+        log_epoch_summary_to_excel(EPOCH_SUMMARY_CSV, epoch + 1, avg_loss, acc)
         print_epoch_summary(epoch + 1, total_loss, acc)
         total_loss_array.append(total_loss)
         #Update learning rate scheduler
@@ -333,7 +281,7 @@ def train_image_model():
             print(f"validation Accuracy after epoch {epoch + 1}: {val_accuracy:.2f}%")
             print(f"validation Loss after epoch {epoch + 1}: {val_loss:.4f}")
             # Update the existing row in the Excel sheet with validation data
-            log_epoch_summary_to_excel(excel_log_path, epoch + 1, avg_loss, acc, val_accuracy, val_loss)
+            log_epoch_summary_to_excel(EPOCH_SUMMARY_CSV, epoch + 1, avg_loss, acc, val_accuracy, val_loss)
 
 
             checkpoint_path = f"{save_dir}/model_epoch_{epoch + 1}.pth"

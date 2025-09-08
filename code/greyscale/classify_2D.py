@@ -25,7 +25,7 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 results = []
 MODEL_NAME = "greyscale"
 DATASET_DIR = "./dataset"
-MODEL_PATH = "dataset\saved_models/greyscale/"
+MODEL_PATH = "dataset/saved_models/greyscale_run_1/"
 IMAGE_SIZE = (150,150)
 NUM_LABELS = 4
 EXTRA_FEATURE = 0
@@ -255,7 +255,7 @@ if __name__ == "__main__":
 
     # Iterate through saved model checkpoints, they are saved every 10 epochs
     for epoch in range(0, 31, 10):
-        MODEL_PATH = f"dataset/saved_models/{MODEL_NAME}/model_epoch_{epoch}.pth"
+        MODEL_PATH = f"dataset_agreed/saved_models/{MODEL_NAME}/model_epoch_{epoch}.pth"
         # if model does not exist, skip
         if not os.path.exists(MODEL_PATH):
             continue
