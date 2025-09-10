@@ -1,0 +1,15 @@
+
+--- Epoch 10, Model: pointcloud_run_1 ---
+Mean Label Accuracy: 79.41%
+Mean Label F1 Score: 0.4319
+Instance Accuracy: 55.69%
+Per-Label Metrics:
+   Good_layer: Accuracy = 77.65%, F1 = 0.6984
+   Ditch: Accuracy = 86.27%, F1 = 0.4068
+   Crater: Accuracy = 60.00%, F1 = 0.6222
+   Waves: Accuracy = 93.73%, F1 = 0.0000
+ROC AUC for each label:
+   Good_layer: AUC = 0.9320
+   Ditch: AUC = 0.9497
+   Crater: AUC = 0.9776
+   Waves: AUC = 0.8418

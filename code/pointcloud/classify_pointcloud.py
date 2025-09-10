@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 
 # Global variables
 results = []
-MODEL_NAME = "pointcloud"
+MODEL_NAME = "pointcloud_run_1"
 DATASET_DIR = "./dataset_agreed/"
 SAVE_MODEL_PATH = "./dataset_agreed/saved_models"
 SPLIT_OUTPUT_DIR = "split_output"
@@ -280,7 +280,7 @@ def classify_point_clouds(epoch):
 if __name__ == "__main__":
     all_epochs_roc_data = [] 
     # Iterate through saved model checkpoints, they are saved every 10 epochs
-    for epoch in range(0, 151, 10):
+    for epoch in range(0, 101, 10):
         if not os.path.exists(f"{MODEL_PATH}model_epoch_{epoch}.pth"):
             continue
 
