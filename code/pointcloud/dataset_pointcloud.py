@@ -69,20 +69,29 @@ class PointCloudDataset(Dataset):
 
         # Balance dataset only for training and define possible augmentations
         if self.train:
-            augmented_rows = []
-            for class_idx, class_name in enumerate(self.label_cols):
-                class_subset = self.metadata[self.metadata[class_name] == 1]
-                current_count = len(class_subset)
-                needed = max(0, self.target_per_class - current_count)
+            balanced_rows = []
 
-                if needed > 0 and len(class_subset) > 0:
+            for class_name in self.label_cols:
+                class_subset = self.metadata[self.metadata[class_name] == 1].copy()
+                current_count = len(class_subset)
+
+                if current_count >= self.target_per_class:
+                    # Downsample to target_per_class
+                    balanced_rows.append(class_subset.sample(n=self.target_per_class, replace=False))
+                else:
+                    # Keep all existing and oversample to reach target_per_class
+                    balanced_rows.append(class_subset)
+                    needed = self.target_per_class - current_count
+                    augmented_rows = []
                     for _ in range(needed):
                         row = class_subset.sample(n=1).iloc[0].copy()
                         row["aug_type"] = np.random.choice(["rotate180", "flip_x", "jitter", "combo"])
                         augmented_rows.append(row)
+                    if augmented_rows:
+                        balanced_rows.append(pd.DataFrame(augmented_rows))
 
-            if augmented_rows:
-                self.metadata = pd.concat([self.metadata, pd.DataFrame(augmented_rows)], ignore_index=True)
+            # Combine all classes into final dataset
+            self.metadata = pd.concat(balanced_rows, ignore_index=True)
 
         # Show label distribution (count how many samples per class)
         label_counts = self.metadata[self.label_cols].sum().to_dict()
@@ -140,5 +149,7 @@ class PointCloudDataset(Dataset):
 
         # Return an empty tensor for additional_features, similar to your ImageDataset
         additional_features_tensor = torch.empty(0, dtype=torch.float32)
+        # verify if target ppoints are used
+        # print(f"{pc_filename}: number of points used: {points.shape[0]} (target is {self.num_points})")
 
         return torch.tensor(points.T, dtype=torch.float32), additional_features_tensor, labels_tensor, pc_filename, aug_type

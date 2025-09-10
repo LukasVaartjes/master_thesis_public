@@ -32,7 +32,7 @@ NUM_LABELS = 4
 EXTRA_FEATURES = 0
 
 
-
+# Write epoch details to excel file  
 def log_epoch_details_to_excel(file_path, epoch, epoch_logs, label_names):
     file_exists = os.path.exists(file_path)
     with open(file_path, mode='a', newline='') as f:
@@ -52,6 +52,8 @@ def log_epoch_details_to_excel(file_path, epoch, epoch_logs, label_names):
 
     print(f"Logged all details for epoch {epoch} to Excel")
 
+
+# Write epoch summary to excel file  
 def log_epoch_summary_to_excel(file_path, epoch, total_loss, accuracy, val_accuracy=None, val_loss=None):
     file_exists = os.path.exists(file_path)
     with open(file_path, mode='a', newline='') as f:
@@ -62,6 +64,7 @@ def log_epoch_summary_to_excel(file_path, epoch, total_loss, accuracy, val_accur
         writer.writerow([epoch, total_loss, accuracy, val_accuracy, val_loss])
 
 
+# Write per label accuracy to excel file  
 def log_per_label_accuracy_to_excel(file_path, epoch, label_names, accuracy_per_label):
     file_exists = os.path.exists(file_path)
     with open(file_path, mode='a', newline='') as f:
@@ -72,6 +75,7 @@ def log_per_label_accuracy_to_excel(file_path, epoch, label_names, accuracy_per_
         writer.writerow([epoch] + accuracy_list)
 
 
+# Write validation predictions to excel file  
 def log_val_predictions_to_excel(file_path, filenames, labels, preds_binary, probabilities, label_names):
     file_exists = os.path.exists(file_path)
     with open(file_path, mode='a', newline='') as f:

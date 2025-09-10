@@ -11,26 +11,83 @@ from tqdm import tqdm
 from torch import nn
 from dataset_pointcloud import PointCloudDataset
 from pointnet_plus_plus import PointNetPlusPlusClassifier
+import csv
 
 # Constants and model settings
 MODEL_NAME = "pointcloud"
 DATASET_DIR = "./dataset_agreed/"
-SAVE_MODEL_PATH = "./dataset/saved_models"
+SAVE_MODEL_PATH = "./dataset_agreed/saved_models"
 SPLIT_OUTPUT_DIR = "split_output"
 TRAIN_DATA_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/train"
 TRAIN_DATA_DESCRIPTION_FILE = f"{TRAIN_DATA_DIR}/train_labels.xlsx"
 VAL_IMAGE_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate"
 VAL_DESC = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
-EPOCHS = 150
+EPOCHS = 100
 BATCH_SIZE = 32
 LR = 0.001
-NUM_POINTS = 2048
+NUM_POINTS = 1024
 # Number of output classes/labels
 NUM_LABELS = 4
 # Number of features used in the model now
 EXTRA_FEATURES = 0
 # Every % VAL_EPOCH validation run is done
 VAL_EPOCH = 10
+
+import csv
+
+# Write epoch details to excel file  
+def log_epoch_details_to_excel(file_path, epoch, epoch_logs, label_names):
+    file_exists = os.path.exists(file_path)
+    with open(file_path, mode='a', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            # write header for easy readability when collecting results
+            writer.writerow(["Epoch", "Batch", "Filename", "Augmentation",
+                             "True Labels", "Predicted Labels", "Probabilities"])
+        for entry in epoch_logs:
+            for i in range(len(entry["filenames"])):
+                true_labels_str = ','.join(map(str, entry["labels"][i].cpu().numpy()))
+                pred_labels_str = ','.join(map(str, entry["preds_binary"][i].cpu().numpy()))
+                probs_str = ','.join(f'{label_names[j]}:{entry["probabilities"][i][j].item():.4f}'
+                                     for j in range(len(label_names)))
+                writer.writerow([epoch, entry["batch_idx"], entry["filenames"][i],
+                                 entry["aug_types"][i], true_labels_str, pred_labels_str, probs_str])
+
+# Write epoch summary to excel file  
+def log_epoch_summary_to_excel(file_path, epoch, total_loss, accuracy, val_accuracy=None, val_loss=None):
+    file_exists = os.path.exists(file_path)
+    with open(file_path, mode='a', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            # write header for easy readability when collecting results
+            writer.writerow(["Epoch", "Training Loss", "Training Accuracy",
+                             "Validation Accuracy", "Validation Loss"])
+        writer.writerow([epoch, total_loss, accuracy, val_accuracy, val_loss])
+
+# Write per label accuracy to excel file  
+def log_per_label_accuracy_to_excel(file_path, epoch, label_names, accuracy_per_label):
+    file_exists = os.path.exists(file_path)
+    with open(file_path, mode='a', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            # write header for easy readability when collecting results
+            writer.writerow(["Epoch"] + label_names)
+        accuracy_list = [round(a.item(), 2) for a in accuracy_per_label]
+        writer.writerow([epoch] + accuracy_list)
+
+# Write validation predictions to excel file  
+def log_val_predictions_to_excel(file_path, filenames, labels, preds_binary, probabilities, label_names):
+    file_exists = os.path.exists(file_path)
+    with open(file_path, mode='a', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            # write header for easy readability when collecting results
+            writer.writerow(["Filename", "True Labels", "Predicted Labels"] + label_names)
+        for i in range(len(filenames)):
+            true_labels_str = ','.join(map(str, labels[i].cpu().numpy()))
+            pred_labels_str = ','.join(map(str, preds_binary[i].cpu().numpy()))
+            probs_str = [round(probabilities[i][j].item(), 4) for j in range(len(label_names))]
+            writer.writerow([filenames[i], true_labels_str, pred_labels_str] + probs_str)
 
 
 # Runs the entire training process for the image classification model
@@ -47,6 +104,14 @@ VAL_EPOCH = 10
 def train_pointcloud_model():
     save_dir = f"{SAVE_MODEL_PATH}/{MODEL_NAME}"
     os.makedirs(save_dir, exist_ok=True)
+
+    #for printing to csv files
+    BATCH_LOG_CSV = os.path.join(save_dir, "batch_details.csv")
+    EPOCH_SUMMARY_CSV = os.path.join(save_dir, "epoch_summary.csv")
+    PER_LABEL_ACC_CSV = os.path.join(save_dir, "per_label_accuracy.csv")
+    VAL_PRED_CSV = os.path.join(save_dir, "validation_predictions.csv")
+
+    label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves']
 
     # Run on gpu if available, otherwise use cpu
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -101,28 +166,38 @@ def train_pointcloud_model():
         total_samples = 0
         validation_loss = 0.0
 
-       #for validation run dont use gradient calculations
-        with torch.no_grad():
-            for points, extra_features, labels, _ , aug_type in val_dataloader:
-                points, labels, extra_features = points.to(device), labels.to(device), extra_features.to(device)
-                
-                labels = labels.float()
 
+        # Collect validation predictions for CSV
+        all_filenames = []
+        all_labels = []
+        all_preds = []
+        all_probs = []
+
+        with torch.no_grad():
+            for points, extra_features, labels, filenames, augtype in val_dataloader:
+                points, labels, extra_features = points.to(device), labels.to(device), extra_features.to(device)
                 outputs = model(points, extra_features)
-                
-                # Calculate validation loss
-                loss = criterion(outputs, labels)
+                loss = criterion(outputs, labels.float())
                 validation_loss += loss.item()
 
-                preds = torch.sigmoid(outputs) > 0.5
+                probabilities = torch.sigmoid(outputs)
+                preds_binary = (probabilities > 0.5).int()
 
-                # Calculate accuracy of predictions per label 
-                correct_predictions_per_label += (preds == labels).sum(dim=0)
+                correct_predictions_per_label += (preds_binary == labels).sum(dim=0)
                 total_predictions_per_label += labels.size(0)
-                
-                # Calculate accuracy of predictions per instance (all labels of single datapoint)
-                all_labels_correct += (preds == labels).all(dim=1).sum().item()
+                all_labels_correct += (preds_binary == labels).all(dim=1).sum().item()
                 total_samples += labels.size(0)
+
+                # Collect for CSV
+                all_filenames.extend(filenames)
+                all_labels.append(labels.cpu())
+                all_preds.append(preds_binary.cpu())
+                all_probs.append(probabilities.cpu())
+
+        all_labels = torch.cat(all_labels, dim=0)
+        all_preds = torch.cat(all_preds, dim=0)
+        all_probs = torch.cat(all_probs, dim=0)
+        log_val_predictions_to_excel(VAL_PRED_CSV, all_filenames, all_labels, all_preds, all_probs, label_names)
                 
         # Calculate average validation loss
         avg_validation_loss = validation_loss / len(val_dataloader) if len(val_dataloader) > 0 else 0.0
@@ -132,6 +207,7 @@ def train_pointcloud_model():
                                          (correct_predictions_per_label / total_predictions_per_label) * 100, 
                                          torch.tensor(0.0).to(device))
         mean_accuracy = torch.mean(accuracy_per_label).item()
+        log_per_label_accuracy_to_excel(PER_LABEL_ACC_CSV, epoch+1, label_names, accuracy_per_label)
 
         # Calculate overall instance accuracy
         instance_accuracy = (all_labels_correct / total_samples * 100) if total_samples > 0 else 0.0
@@ -154,12 +230,13 @@ def train_pointcloud_model():
 
         progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{EPOCHS}", leave=False)
 
+        epoch_logs = []
+
         for batch_idx, (points, extra_features, labels, filenames, augtype) in enumerate(progress_bar):
             points, labels, extra_features = points.to(device), labels.to(device), extra_features.to(device)
             optimizer.zero_grad()
 
             labels = labels.float()
-
             outputs = model(points, extra_features)
             loss = criterion(outputs, labels)
             loss.backward()
@@ -167,22 +244,29 @@ def train_pointcloud_model():
 
             total_loss += loss.item()
 
-            preds = torch.sigmoid(outputs) > 0.5
-            correct_total_labels += (preds == labels).all(dim=1).sum().item()
+            probabilities = torch.sigmoid(outputs)
+            preds_binary = (probabilities > 0.5).int()
+
+            correct_total_labels += (preds_binary == labels).all(dim=1).sum().item()
             total_samples += labels.size(0)
 
             progress_bar.set_postfix(loss=loss.item())
 
-            label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves']
-            probabilities = torch.sigmoid(outputs)
-            # Convert probabilities to binary predictions (0 or 1 based on 0.5 threshold)
-            preds_binary = (probabilities > 0.5).int()
+            # Collect batch info for logging
+            epoch_logs.append({
+                "batch_idx": batch_idx + 1,
+                "filenames": filenames,
+                "aug_types": augtype,
+                "labels": labels,
+                "preds_binary": preds_binary,
+                "probabilities": probabilities
+            })
 
-            print(f"\n--- Epoch {epoch+1}, Batch {batch_idx+1} ---")
-            for i in range(labels.size(0)):
-                prob_str = ', '.join(f'{label_names[j]}: {probabilities[i][j].item():.4f}' for j in range(len(label_names)))
-                print(f"File: {filenames[i]} , Aug: {augtype[i]},  True: {labels[i].cpu().numpy().tolist()}, Pred: {preds_binary[i].cpu().numpy().tolist()}, Probs: {{{prob_str}}}")
-
+        # after loop ends
+        log_epoch_details_to_excel(BATCH_LOG_CSV, epoch + 1, epoch_logs, label_names)
+        avg_loss = total_loss / len(train_dataloader)
+        acc = (correct_total_labels / total_samples * 100) if total_samples > 0 else 0.0
+        log_epoch_summary_to_excel(EPOCH_SUMMARY_CSV, epoch + 1, avg_loss, acc)
         acc = (correct_total_labels / total_samples * 100) if total_samples > 0 else 0.0
         print_epoch_summary(epoch + 1, total_loss, acc)
         total_loss_array.append(total_loss)
@@ -196,7 +280,8 @@ def train_pointcloud_model():
             val_loss_array.append(val_loss)
             print(f"validation Accuracy after epoch {epoch + 1}: {val_accuracy:.2f}%")
             print(f"validation Loss after epoch {epoch + 1}: {val_loss:.4f}")
-
+            
+            log_epoch_summary_to_excel(EPOCH_SUMMARY_CSV, epoch + 1, avg_loss, acc, val_accuracy, val_loss)
             checkpoint_path = f"{save_dir}/model_epoch_{epoch + 1}.pth"
             torch.save(model.state_dict(), checkpoint_path)
             print(f"Model saved to {checkpoint_path}")

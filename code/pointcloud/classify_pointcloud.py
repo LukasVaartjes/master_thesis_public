@@ -24,14 +24,14 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 
 # Global variables
 results = []
-MODEL_NAME = "pointcloud"
-DATASET_DIR = "./dataset/"
-SAVE_MODEL_PATH = "./dataset/saved_models"
+MODEL_NAME = "pointcloud_test_run"
+DATASET_DIR = "./dataset_agreed/"
+SAVE_MODEL_PATH = "./dataset_agreed/saved_models"
 SPLIT_OUTPUT_DIR = "split_output"
 MODEL_PATH = f"{DATASET_DIR}saved_models/{MODEL_NAME}/"
 NUM_LABELS = 4
 EXTRA_FEATURE = 0
-NUM_POINTS = 2000
+NUM_POINTS = 1024
 
 def classify_point_clouds(epoch):
     """
@@ -56,13 +56,16 @@ def classify_point_clouds(epoch):
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
+    epoch_output_dir = Path(f"{DATASET_DIR}/saved_models/{MODEL_NAME}/epoch_{epoch}")
+    epoch_output_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialize dataset for the test set
     # set batch size tp 1 for individual image processing
     dataset = PointCloudDataset(
         pointcloud_dir=f"{DATASET_DIR}/split_output/test",
         description_data=f"{DATASET_DIR}/split_output/test/test_labels.xlsx",
-        num_points=NUM_POINTS
+        num_points=NUM_POINTS,
+        train=False
     )
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
     print(f"Loaded {len(dataset)} samples for classification.")
@@ -81,7 +84,7 @@ def classify_point_clouds(epoch):
     
     # Disable gradient computation for inference to save memory
     with torch.no_grad():
-        for i, (points, extra_features, true_labels, pc_file) in enumerate(dataloader):
+        for i, (points, extra_features, true_labels, pc_file, _) in enumerate(dataloader):
 
             if isinstance(pc_file, (tuple, list)):
                 pc_file = pc_file[0]
@@ -178,9 +181,7 @@ def classify_point_clouds(epoch):
         plt.title(f'Confusion Matrix for {label_name} (Epoch {epoch})')
         plt.xlabel('Predicted Label')
         plt.ylabel('True Label')
-        cm_output_dir = Path(f"{DATASET_DIR}/saved_models/{MODEL_NAME}/confusion_matrices/")
-        cm_output_dir.mkdir(parents=True, exist_ok=True)
-        cm_output_path = cm_output_dir / f"confusion_matrix_{label_name}_epoch_{epoch}.png"
+        cm_output_path = epoch_output_dir / f"confusion_matrix_{label_name}.png"
         plt.savefig(cm_output_path)
         plt.close()
         print(f"Confusion matrix for {label_name} saved to {cm_output_path}")
@@ -194,6 +195,34 @@ def classify_point_clouds(epoch):
     # Calculate instance-level exact match accuracy
     instance_accuracy = np.mean(np.all(all_true_labels == all_predicted_binary_labels, axis=1)) * 100
     print(f"Instance exact match Accuracy: {instance_accuracy:.2f}%")
+
+    num_labels = len(dataset.label_cols)
+    multi_label_cm = np.zeros((num_labels, num_labels), dtype=int)
+    for t_vec, p_vec in zip(all_true_labels, all_predicted_binary_labels):
+        for t in np.where(t_vec==1)[0]:
+            for p in np.where(p_vec==1)[0]:
+                multi_label_cm[t,p] += 1
+
+    plt.figure(figsize=(8,6))
+    sns.heatmap(multi_label_cm, annot=True, fmt='d', cmap='Blues',
+                xticklabels=dataset.label_cols, yticklabels=dataset.label_cols)
+    plt.title(f'Multi-label Confusion Matrix (Epoch {epoch})')
+    plt.savefig(epoch_output_dir / "multi_label_confusion_matrix.png")
+    plt.close()
+
+    num_labels = len(dataset.label_cols)
+    multi_label_cm = np.zeros((num_labels, num_labels), dtype=int)
+    for t_vec, p_vec in zip(all_true_labels, all_predicted_binary_labels):
+        for t in np.where(t_vec==1)[0]:
+            for p in np.where(p_vec==1)[0]:
+                multi_label_cm[t,p] += 1
+
+    plt.figure(figsize=(8,6))
+    sns.heatmap(multi_label_cm, annot=True, fmt='d', cmap='Blues',
+                xticklabels=dataset.label_cols, yticklabels=dataset.label_cols)
+    plt.title(f'Multi-label Confusion Matrix (Epoch {epoch})')
+    plt.savefig(epoch_output_dir / "multi_label_confusion_matrix.png")
+    plt.close()
     
     roc_data = {}
     # Calculate ROC curve data for each label
@@ -206,18 +235,18 @@ def classify_point_clouds(epoch):
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Save results to a text file
-    txt_output_path = output_dir / "multi_label_scores.txt"
+    txt_output_path = epoch_output_dir / "multi_label_scores.txt"
     with open(txt_output_path, "a") as f:
         f.write(f"\n--- Epoch {epoch}, Model: {MODEL_NAME} ---\n")
         f.write(f"Mean Label Accuracy: {mean_label_accuracy:.2f}%\n")
         f.write(f"Mean Label F1 Score: {mean_label_f1:.4f}\n")
-        f.write(f"Instance (Exact Match) Accuracy: {instance_accuracy:.2f}%\n")
+        f.write(f"Instance Accuracy: {instance_accuracy:.2f}%\n")
         f.write("Per-Label Metrics:\n")
-        for label_name, acc, f1 in zip(dataset.label_cols, per_label_accuracy, per_label_f1):
-            f.write(f"    {label_name}: Accuracy = {acc:.2f}%, F1 = {f1:.4f}\n")
+        for l, a, f1 in zip(dataset.label_cols, per_label_accuracy, per_label_f1):
+            f.write(f"   {l}: Accuracy = {a:.2f}%, F1 = {f1:.4f}\n")
         f.write("ROC AUC for each label:\n")
-        for label_name, data in roc_data.items():
-            f.write(f"    {label_name}: AUC = {data['auc']:.4f}\n")
+        for l, data in roc_data.items():
+            f.write(f"   {l}: AUC = {data['auc']:.4f}\n")
 
     print(f"Evaluation results saved to {txt_output_path}")
 
@@ -232,7 +261,8 @@ def classify_point_clouds(epoch):
 
     df_results = pd.DataFrame(df_results_data)
     
-    excel_output_path = output_dir / f"per_file_predictions_epoch_{epoch}.xlsx"
+    excel_output_path = epoch_output_dir / f"per_file_predictions_epoch_{epoch}.xlsx"
+
     
     writer = pd.ExcelWriter(excel_output_path, engine='xlsxwriter')
 

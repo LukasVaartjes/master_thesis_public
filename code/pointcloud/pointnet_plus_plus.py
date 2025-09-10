@@ -48,9 +48,12 @@ class PointNetPlusPlusClassifier(nn.Module):
         self.sa1 = PointNetSetAbstraction(npoint=1024, radius=0.1, nsample=32, in_channel=0, mlp=[32, 32, 64])
         self.sa2 = PointNetSetAbstraction(npoint=256, radius=0.2, nsample=64, in_channel=64, mlp=[64, 64, 128])
         self.sa3 = PointNetSetAbstraction(npoint=64, radius=0.4, nsample=128, in_channel=128, mlp=[128, 256, 512])
-        self.sa4 = PointNetSetAbstraction(npoint=16, radius=0.8, nsample=128, in_channel=512, mlp=[512, 512, 1024])
+        #remove for now to reduce computation time
+        # self.sa4 = PointNetSetAbstraction(npoint=16, radius=0.8, nsample=128, in_channel=512, mlp=[512, 512, 1024])
 
-        self.fc1 = nn.Linear(1024 + extra_features_dim, 512)
+        #removed SA for so went back to 512 for now
+        # self.fc1 = nn.Linear(1024 + extra_features_dim, 512)
+        self.fc1 = nn.Linear(512 + extra_features_dim, 512)
         self.bn1 = nn.BatchNorm1d(512)
         self.drop1 = nn.Dropout(0.4)
         self.fc2 = nn.Linear(512, 256)
@@ -65,8 +68,13 @@ class PointNetPlusPlusClassifier(nn.Module):
         l1_xyz, l1_points = self.sa1(xyz, None)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
         l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
-        l4_xyz, l4_points = self.sa4(l3_xyz, l3_points)
-        x = l4_points.max(dim=1)[0]  # global max pooling
+
+        l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
+        x = l3_points.max(dim=1)[0]
+
+        #temp removed sa4 layer
+        # l4_xyz, l4_points = self.sa4(l3_xyz, l3_points)
+        # x = l4_points.max(dim=1)[0]  # global max pooling
 
         # Concatenate extra features if any
         if self.extra_features_dim > 0 and extra_features is not None:
