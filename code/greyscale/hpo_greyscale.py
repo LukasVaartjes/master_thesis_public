@@ -7,7 +7,7 @@ import os
 from dataset_2D import ImageDataset
 from cnn_model_2d import SimpleImageCNN
 
-MODEL_NAME = "pointcloud"
+MODEL_NAME = "greyscale_optimized"
 DATASET_DIR = "./dataset_agreed/"
 SAVE_MODEL_PATH = "./dataset/saved_models"
 SPLIT_OUTPUT_DIR = "split_output"
@@ -17,26 +17,24 @@ VAL_IMAGE_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate"
 VAL_DESC = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
 BATCH_SIZE = 32
 LR = 0.001
-NUM_POINTS = 512
-# Number of output classes/labels
 NUM_LABELS = 4
-# Number of features used in the model now
 EXTRA_FEATURES = 0
-# Every % VAL_EPOCH validation run is done
 VAL_EPOCH = 10
 IMAGE_SIZE= (150,150)
 
+
 def objective(trial):
-    # Suggest hyperparameters
     lr = trial.suggest_loguniform("lr", 1e-5, 1e-2)
     batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
+    weight_decay = trial.suggest_loguniform("weight_decay", 1e-6, 1e-3)
+    optimizer_name = trial.suggest_categorical("optimizer", ["AdamW", "Adam", "SGD"])
     
-    # Load datasets with batch size suggested by Optuna
+    # Load datasets
     train_dataset = ImageDataset(
         image_dir=os.path.join(TRAIN_DATA_DIR, 'png'),
         description_data=TRAIN_DATA_DESCRIPTION_FILE,
         target_size=IMAGE_SIZE,
-        target_per_class=400,
+        target_per_class=300,
         train=True
     )
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -55,10 +53,16 @@ def objective(trial):
     model = SimpleImageCNN(num_labels=NUM_LABELS, extra_features_dim=EXTRA_FEATURES).to(device)
     
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     
-    # Train for a small number of epochs (for HPO, you can reduce epochs to save time)
-    EPOCHS_HPO = 20
+    # Choose optimizer
+    if optimizer_name == "AdamW":
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    elif optimizer_name == "Adam":
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    elif optimizer_name == "SGD":
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
+    
+    EPOCHS_HPO = 30
     
     for epoch in range(EPOCHS_HPO):
         model.train()
@@ -74,7 +78,6 @@ def objective(trial):
         
         avg_loss = total_loss / len(train_loader)
         print(f"Trial {trial.number}, Epoch {epoch+1}/{EPOCHS_HPO}, Avg Training Loss: {avg_loss:.4f}")
-
     
     # Validation
     model.eval()
@@ -90,12 +93,11 @@ def objective(trial):
 
     all_labels = torch.cat(all_labels).numpy()
     all_preds = torch.cat(all_preds).numpy()
-    epoch_f1 = f1_score(all_labels, all_preds, average='macro')
+    val_f1 = f1_score(all_labels, all_preds, average='macro')
 
-    print(f"Trial {trial.number}, Epoch {epoch+1}/{EPOCHS_HPO}, Avg Training Loss: {avg_loss:.4f}, Epoch Val F1: {epoch_f1:.4f}")
+    print(f"Trial {trial.number} completed, Validation F1: {val_f1:.4f}")
     
-    
-    return f1
+    return val_f1
 
 if __name__ == "__main__":
     study = optuna.create_study(direction="maximize")
