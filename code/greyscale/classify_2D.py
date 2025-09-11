@@ -11,19 +11,20 @@ from torch.utils.data import DataLoader
 from dataset_2D import ImageDataset
 from cnn_model_2d import SimpleImageCNN
 import torch.nn.functional as F
-from sklearn.metrics import confusion_matrix,  f1_score, roc_curve, auc
+from sklearn.metrics import confusion_matrix,  f1_score, roc_curve, auc, balanced_accuracy_score, precision_score, recall_score
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 import warnings
+import time
 
 warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 
 # Global variables
 results = []
-MODEL_NAME = "greyscale_run_2"
+MODEL_NAME = "greyscale_run_3"
 DATASET_DIR = "./dataset_agreed"
 MODEL_PATH = "dataset_agreed/saved_models/greyscale_run_1/"
 IMAGE_SIZE = (150,150)
@@ -82,6 +83,7 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
     all_predicted_binary_labels = []
     counter = 1
     file_results_for_excel = []
+    inference_times = []
     
     # Disable gradient computation for inference to save memory
     with torch.no_grad():
@@ -95,8 +97,14 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
             extra_features = extra_features.to(device)
             true_labels = true_labels.to(device)    
             
-            # Perform forward pass
+            # Measure inference time
+            start_time = time.time()
             output = model(images, extra_features)
+            end_time = time.time()
+
+            # Record the time for this sample
+            inference_times.append(end_time - start_time)
+
             # Apply sigmoid to convert logits to probabilities
             probs = torch.sigmoid(output).cpu().detach().numpy()[0]
             
@@ -172,10 +180,17 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
         # Calculate F1-score and accuracy
         f1_lbl = f1_score(true_for_label, pred_for_label, zero_division=0)
         acc_lbl = np.mean(true_for_label == pred_for_label) * 100
+
+        bal_acc_lbl = balanced_accuracy_score(true_for_label, pred_for_label) * 100
+        bal_prec_lbl = precision_score(true_for_label, pred_for_label, zero_division=0)
+        bal_recall_lbl = recall_score(true_for_label, pred_for_label, zero_division=0)
         
         per_label_f1.append(f1_lbl)
         per_label_accuracy.append(acc_lbl)
-        print(f"   {label_name}: Accuracy = {acc_lbl:.2f}%, F1 = {f1_lbl:.4f}")
+        print(f"   {label_name}: Accuracy = {acc_lbl:.2f}%, F1 = {f1_lbl:.4f}, "
+          f"Balanced Acc = {bal_acc_lbl:.2f}%, "
+          f"Balanced Precision = {bal_prec_lbl:.4f}, "
+          f"Balanced Recall = {bal_recall_lbl:.4f}")
         
         # Generate and save confusion matrix for each label
         cm = confusion_matrix(true_for_label, pred_for_label)
@@ -231,6 +246,10 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
     plt.close()
     print(f"Multi-class confusion matrix saved to {multi_class_cm_path}")
 
+    #calculate avg inference time per sample
+    avg_inference_time = np.mean(inference_times)
+    print(f"\nAverage inference time per sample: {avg_inference_time*1000:.2f} ms")
+
     # Calculate overall mean metrics
     mean_label_accuracy = np.mean(per_label_accuracy)
     mean_label_f1 = np.mean(per_label_f1)
@@ -263,12 +282,23 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
         f.write(f"Mean Label Accuracy: {mean_label_accuracy:.2f}%\n")
         f.write(f"Mean Label F1 Score: {mean_label_f1:.4f}\n")
         f.write(f"Instance (Exact Match) Accuracy: {instance_accuracy:.2f}%\n")
-        f.write("Per-Label Metrics:\n")
+        f.write(f"Per-Label Metrics:\n")
         for label_name, acc, f1 in zip(dataset.label_cols, per_label_accuracy, per_label_f1):
-            f.write(f"   {label_name}: Accuracy = {acc:.2f}%, F1 = {f1:.4f}\n")
+            # Compute balanced metrics again for saving
+            true_for_label = all_true_labels[:, dataset.label_cols.index(label_name)]
+            pred_for_label = all_predicted_binary_labels[:, dataset.label_cols.index(label_name)]
+            bal_acc_lbl = balanced_accuracy_score(true_for_label, pred_for_label) * 100
+            bal_prec_lbl = precision_score(true_for_label, pred_for_label, zero_division=0)
+            bal_recall_lbl = recall_score(true_for_label, pred_for_label, zero_division=0)
+            
+            f.write(f"   {label_name}: Accuracy = {acc:.2f}%, F1 = {f1:.4f}, "
+                    f"Balanced Acc = {bal_acc_lbl:.2f}%, "
+                    f"Balanced Precision = {bal_prec_lbl:.4f}, "
+                    f"Balanced Recall = {bal_recall_lbl:.4f}\n")
         f.write("ROC AUC for each label:\n")
         for label_name, data in roc_data.items():
             f.write(f"   {label_name}: AUC = {data['auc']:.4f}\n")
+        f.write(f"Average inference time per sample: {avg_inference_time*1000:.2f} ms\n")
 
     print(f"Evaluation results saved to {txt_output_path}")
 

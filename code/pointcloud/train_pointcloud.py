@@ -14,7 +14,7 @@ from pointnet_plus_plus import PointNetPlusPlusClassifier
 import csv
 
 # Constants and model settings
-MODEL_NAME = "pointcloud"
+MODEL_NAME = "pointcloud_new_model"
 DATASET_DIR = "./dataset_agreed/"
 SAVE_MODEL_PATH = "./dataset_agreed/saved_models"
 SPLIT_OUTPUT_DIR = "split_output"
