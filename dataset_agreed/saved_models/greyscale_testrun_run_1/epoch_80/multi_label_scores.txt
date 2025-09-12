@@ -1,0 +1,30 @@
+
+--- Epoch 80, Model: greyscale_run_1 ---
+Mean Label Accuracy: 93.24%
+Mean Label F1 Score: 0.8837
+Instance (Exact Match) Accuracy: 84.71%
+Per-Label Metrics:
+   Good_layer: Accuracy = 88.63%, F1 = 0.8700
+   Ditch: Accuracy = 94.12%, F1 = 0.8515
+   Crater: Accuracy = 90.98%, F1 = 0.8757
+   Waves: Accuracy = 99.22%, F1 = 0.9375
+ROC AUC for each label:
+   Good_layer: AUC = 0.9811
+   Ditch: AUC = 0.9920
+   Crater: AUC = 0.9850
+   Waves: AUC = 0.9997
+
+--- Epoch 80, Model: greyscale_run_1 ---
+Mean Label Accuracy: 93.24%
+Mean Label F1 Score: 0.8837
+Instance (Exact Match) Accuracy: 84.71%
+Per-Label Metrics:
+   Good_layer: Accuracy = 88.63%, F1 = 0.8700
+   Ditch: Accuracy = 94.12%, F1 = 0.8515
+   Crater: Accuracy = 90.98%, F1 = 0.8757
+   Waves: Accuracy = 99.22%, F1 = 0.9375
+ROC AUC for each label:
+   Good_layer: AUC = 0.9811
+   Ditch: AUC = 0.9920
+   Crater: AUC = 0.9850
+   Waves: AUC = 0.9997

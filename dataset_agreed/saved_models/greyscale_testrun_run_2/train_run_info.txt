@@ -1,0 +1,10 @@
+EPOCHS = 150
+BATCH_SIZE = 32
+LR = 0.001
+IMAGE_SIZE = (150, 150)
+# Number of output classes/labels
+NUM_LABELS = 4
+# Number of features used in the model now
+EXTRA_FEATURES = 0
+623 samples per set
+validation_accuracy is instance accuracy
