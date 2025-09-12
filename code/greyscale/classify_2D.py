@@ -24,9 +24,8 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 
 # Global variables
 results = []
-MODEL_NAME = "greyscale_run_3"
+MODEL_NAME = "greyscale_HPO_run_10"
 DATASET_DIR = "./dataset_agreed"
-MODEL_PATH = "dataset_agreed/saved_models/greyscale_run_1/"
 IMAGE_SIZE = (150,150)
 NUM_LABELS = 4
 EXTRA_FEATURE = 0

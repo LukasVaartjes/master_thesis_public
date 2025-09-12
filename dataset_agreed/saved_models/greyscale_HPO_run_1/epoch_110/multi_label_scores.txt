@@ -1,0 +1,16 @@
+
+--- Epoch 110, Model: greyscale_HPO_run_1 ---
+Mean Label Accuracy: 93.92%
+Mean Label F1 Score: 0.8861
+Instance (Exact Match) Accuracy: 86.27%
+Per-Label Metrics:
+   Good_layer: Accuracy = 90.20%, F1 = 0.8908, Balanced Acc = 89.91%, Balanced Precision = 0.9444, Balanced Recall = 0.8430
+   Ditch: Accuracy = 94.12%, F1 = 0.8544, Balanced Acc = 93.92%, Balanced Precision = 0.7857, Balanced Recall = 0.9362
+   Crater: Accuracy = 92.55%, F1 = 0.8902, Balanced Acc = 92.32%, Balanced Precision = 0.8652, Balanced Recall = 0.9167
+   Waves: Accuracy = 98.82%, F1 = 0.9091, Balanced Acc = 96.46%, Balanced Precision = 0.8824, Balanced Recall = 0.9375
+ROC AUC for each label:
+   Good_layer: AUC = 0.9627
+   Ditch: AUC = 0.9897
+   Crater: AUC = 0.9662
+   Waves: AUC = 0.9995
+Average inference time per sample: 2.44 ms
