@@ -14,7 +14,7 @@ from cnn_model_2d import SimpleImageCNN
 import csv
 
 # Constants and model settings
-MODEL_NAME = "greyscale_HPO"
+MODEL_NAME = "greyscale_HPO_run_10"
 DATASET_DIR = "./dataset_agreed/"
 SAVE_MODEL_PATH = "./dataset_agreed/saved_models"
 SPLIT_OUTPUT_DIR = "split_output"
