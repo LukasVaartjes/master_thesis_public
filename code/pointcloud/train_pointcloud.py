@@ -22,9 +22,9 @@ TRAIN_DATA_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/train"
 TRAIN_DATA_DESCRIPTION_FILE = f"{TRAIN_DATA_DIR}/train_labels.xlsx"
 VAL_IMAGE_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate"
 VAL_DESC = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
-EPOCHS = 100
-BATCH_SIZE = 32
-LR = 0.001
+EPOCHS = 150
+BATCH_SIZE = 16
+LR = 0.000136653710280162
 NUM_POINTS = 2048
 # Number of output classes/labels
 NUM_LABELS = 4
@@ -143,7 +143,7 @@ def train_pointcloud_model():
     print(f"Model architecture: {model}")
 
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=3.910406888401666e-6)
     
     #learning rate where it is reduced by 0.5 every 10 epochs
     scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
