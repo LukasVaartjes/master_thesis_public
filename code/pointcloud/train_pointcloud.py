@@ -25,7 +25,7 @@ VAL_DESC = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
 EPOCHS = 100
 BATCH_SIZE = 32
 LR = 0.001
-NUM_POINTS = 1024
+NUM_POINTS = 2048
 # Number of output classes/labels
 NUM_LABELS = 4
 # Number of features used in the model now

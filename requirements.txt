@@ -6,28 +6,21 @@ torchaudio
 # Data handling/loading
 numpy
 pandas
-random
-shutil
-PIL
-openpyxl 
-cv2 
-json 
-pathlib 
+Pillow
+openpyxl
+opencv-python
 
 # For plotting
 matplotlib
 tqdm
-seaborn 
+seaborn
 
-# To work with 3D file and point cloud 
+# To work with 3D file and point cloud
 plyfile
 open3d
-sklearn
+scikit-learn
 pyntcloud
 
-# Utility
-os
-glob
 
 # If specific cuda installment is required, install manually and remove from this txt file
 # Instead, install it separately like:
