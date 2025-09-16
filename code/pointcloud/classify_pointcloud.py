@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from dataset_pointcloud import PointCloudDataset
 from pointnet_plus_plus import PointNetPlusPlusClassifier
 import torch.nn.functional as F
-from sklearn.metrics import confusion_matrix, classification_report, f1_score, roc_curve, auc
+from sklearn.metrics import confusion_matrix, classification_report, f1_score, roc_curve, auc, balanced_accuracy_score, precision_score, recall_score
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -159,18 +159,26 @@ def classify_point_clouds(epoch):
     per_label_accuracy = []
     
     print("\nPer-Label Metrics:")
-    # Calculate and print metrics for each individual label
     for i, label_name in enumerate(dataset.label_cols):
         true_for_label = all_true_labels[:, i]
         pred_for_label = all_predicted_binary_labels[:, i]
-        
+
         # Calculate F1-score and accuracy
         f1_lbl = f1_score(true_for_label, pred_for_label, zero_division=0)
         acc_lbl = np.mean(true_for_label == pred_for_label) * 100
-        
+
+        # Calculate balanced metrics
+        bal_acc_lbl = balanced_accuracy_score(true_for_label, pred_for_label) * 100
+        bal_prec_lbl = precision_score(true_for_label, pred_for_label, zero_division=0)
+        bal_recall_lbl = recall_score(true_for_label, pred_for_label, zero_division=0)
+
         per_label_f1.append(f1_lbl)
         per_label_accuracy.append(acc_lbl)
-        print(f"   {label_name}: Accuracy = {acc_lbl:.2f}%, F1 = {f1_lbl:.4f}")
+
+        print(f"   {label_name}: Accuracy = {acc_lbl:.2f}%, F1 = {f1_lbl:.4f}, "
+            f"Balanced Acc = {bal_acc_lbl:.2f}%, "
+            f"Balanced Precision = {bal_prec_lbl:.4f}, "
+            f"Balanced Recall = {bal_recall_lbl:.4f}")
         
         # Generate and save confusion matrix for each label
         cm = confusion_matrix(true_for_label, pred_for_label)
@@ -235,20 +243,31 @@ def classify_point_clouds(epoch):
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Save results to a text file
+    # Save results to a text file
     txt_output_path = epoch_output_dir / "multi_label_scores.txt"
     with open(txt_output_path, "a") as f:
         f.write(f"\n--- Epoch {epoch}, Model: {MODEL_NAME} ---\n")
         f.write(f"Mean Label Accuracy: {mean_label_accuracy:.2f}%\n")
         f.write(f"Mean Label F1 Score: {mean_label_f1:.4f}\n")
-        f.write(f"Instance Accuracy: {instance_accuracy:.2f}%\n")
+        f.write(f"Instance (Exact Match) Accuracy: {instance_accuracy:.2f}%\n")
         f.write("Per-Label Metrics:\n")
-        for l, a, f1 in zip(dataset.label_cols, per_label_accuracy, per_label_f1):
-            f.write(f"   {l}: Accuracy = {a:.2f}%, F1 = {f1:.4f}\n")
+        for label_name, acc, f1 in zip(dataset.label_cols, per_label_accuracy, per_label_f1):
+            idx = dataset.label_cols.index(label_name)
+            true_for_label = all_true_labels[:, idx]
+            pred_for_label = all_predicted_binary_labels[:, idx]
+            bal_acc_lbl = balanced_accuracy_score(true_for_label, pred_for_label) * 100
+            bal_prec_lbl = precision_score(true_for_label, pred_for_label, zero_division=0)
+            bal_recall_lbl = recall_score(true_for_label, pred_for_label, zero_division=0)
+            f.write(f"   {label_name}: Accuracy = {acc:.2f}%, F1 = {f1:.4f}, "
+                    f"Balanced Acc = {bal_acc_lbl:.2f}%, "
+                    f"Balanced Precision = {bal_prec_lbl:.4f}, "
+                    f"Balanced Recall = {bal_recall_lbl:.4f}\n")
         f.write("ROC AUC for each label:\n")
         for l, data in roc_data.items():
             f.write(f"   {l}: AUC = {data['auc']:.4f}\n")
 
     print(f"Evaluation results saved to {txt_output_path}")
+
 
     # Prepare data for Excel export
     df_results_data = []
