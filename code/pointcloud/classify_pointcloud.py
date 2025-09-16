@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 import warnings
+import datetime
 
 warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 
@@ -31,7 +32,7 @@ SPLIT_OUTPUT_DIR = "split_output"
 MODEL_PATH = f"{DATASET_DIR}saved_models/{MODEL_NAME}/"
 NUM_LABELS = 4
 EXTRA_FEATURE = 0
-NUM_POINTS = 1024
+NUM_POINTS = 2048
 
 def classify_point_clouds(epoch):
     """
@@ -247,6 +248,8 @@ def classify_point_clouds(epoch):
     txt_output_path = epoch_output_dir / "multi_label_scores.txt"
     with open(txt_output_path, "a") as f:
         f.write(f"\n--- Epoch {epoch}, Model: {MODEL_NAME} ---\n")
+        f.write(f"{datetime.datetime.now()}---\n")
+        f.write(f"nr of inputpoints {NUM_POINTS}---\n")
         f.write(f"Mean Label Accuracy: {mean_label_accuracy:.2f}%\n")
         f.write(f"Mean Label F1 Score: {mean_label_f1:.4f}\n")
         f.write(f"Instance (Exact Match) Accuracy: {instance_accuracy:.2f}%\n")

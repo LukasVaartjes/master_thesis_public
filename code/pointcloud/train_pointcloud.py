@@ -14,7 +14,7 @@ from pointnet_plus_plus import PointNetPlusPlusClassifier
 import csv
 
 # Constants and model settings
-MODEL_NAME = "pointcloud_new_model"
+MODEL_NAME = "pointcloud_base_run1"
 DATASET_DIR = "./dataset_agreed/"
 SAVE_MODEL_PATH = "./dataset_agreed/saved_models"
 SPLIT_OUTPUT_DIR = "split_output"
@@ -23,8 +23,18 @@ TRAIN_DATA_DESCRIPTION_FILE = f"{TRAIN_DATA_DIR}/train_labels.xlsx"
 VAL_IMAGE_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate"
 VAL_DESC = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
 EPOCHS = 150
-BATCH_SIZE = 16
-LR = 0.000136653710280162
+
+#Base
+LR = 0.001
+WEIGHT_DECAY = 1e-4
+BATCH_SIZE = 32
+# HPO
+#LR = 0.000136653710280162
+# WEIGHT_DECAY = 3.910406888401666e-6
+# BATCH_SIZE = 16
+
+
+OPTIMIZER = "Adam"
 NUM_POINTS = 2048
 # Number of output classes/labels
 NUM_LABELS = 4
@@ -90,6 +100,19 @@ def log_val_predictions_to_excel(file_path, filenames, labels, preds_binary, pro
             writer.writerow([filenames[i], true_labels_str, pred_labels_str] + probs_str)
 
 
+def log_hyperparameters(save_dir):
+    """
+    Writes the key hyperparameters and dataset settings to a text file.
+    """
+    file_path = os.path.join(save_dir, "hyperparameters.txt")
+    with open(file_path, "w") as f:
+        f.write(f"Number of input points: {NUM_POINTS}\n")
+        f.write(f"Learning rate: {LR}\n")
+        f.write(f"Weight decay: {WEIGHT_DECAY}\n")
+        f.write(f"Optimizer: Adam\n")
+        f.write(f"Batch size: {BATCH_SIZE}\n")
+    print(f"Hyperparameters saved to {file_path}")
+
 # Runs the entire training process for the image classification model
 # 1. Sets up directories to save model and plots
 # 2. Uses either gpu or cpu for training if available
@@ -110,6 +133,11 @@ def train_pointcloud_model():
     EPOCH_SUMMARY_CSV = os.path.join(save_dir, "epoch_summary.csv")
     PER_LABEL_ACC_CSV = os.path.join(save_dir, "per_label_accuracy.csv")
     VAL_PRED_CSV = os.path.join(save_dir, "validation_predictions.csv")
+    save_dir = f"{SAVE_MODEL_PATH}/{MODEL_NAME}"
+    os.makedirs(save_dir, exist_ok=True)
+
+    # Log hyperparameters
+    log_hyperparameters(save_dir)
 
     label_names = ['Good_layer', 'Ditch', 'Crater', 'Waves']
 
@@ -143,7 +171,7 @@ def train_pointcloud_model():
     print(f"Model architecture: {model}")
 
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=3.910406888401666e-6)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     
     #learning rate where it is reduced by 0.5 every 10 epochs
     scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
