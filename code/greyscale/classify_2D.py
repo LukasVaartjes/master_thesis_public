@@ -57,7 +57,7 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
     DESCRIPTION_FILE = f"{DATASET_DIR}/split_output/test/test_labels.xlsx"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
-    epoch_output_dir = Path(f"{DATASET_DIR}/saved_models/{MODEL_NAME}/epoch_{epoch}")
+    epoch_output_dir = Path(f"{DATASET_DIR}/saved_models/baserun/{MODEL_NAME}/epoch_{epoch}")
     epoch_output_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialize dataset for the test set
@@ -332,7 +332,7 @@ if __name__ == "__main__":
 
     # Iterate through saved model checkpoints, they are saved every 10 epochs
     for epoch in range(0, 151, 10):
-        MODEL_PATH = f"dataset_agreed/saved_models/{MODEL_NAME}/model_epoch_{epoch}.pth"
+        MODEL_PATH = f"dataset_agreed/saved_models/baserun/{MODEL_NAME}/model_epoch_{epoch}.pth"
         # if model does not exist, skip
         if not os.path.exists(MODEL_PATH):
             continue
@@ -371,7 +371,7 @@ if __name__ == "__main__":
         plt.legend(loc="lower right")
         plt.grid(True)
 
-        output_dir = Path(f"{DATASET_DIR}/saved_models/{MODEL_NAME}/")
+        output_dir = Path(f"{DATASET_DIR}/saved_models/baserun/{MODEL_NAME}/")
         os.makedirs(output_dir, exist_ok=True)
         plt.savefig(os.path.join(output_dir, f"combined_roc_curve_{label_name}.png"))
         plt.show()

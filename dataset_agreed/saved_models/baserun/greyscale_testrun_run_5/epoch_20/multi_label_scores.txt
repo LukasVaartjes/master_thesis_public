@@ -14,3 +14,19 @@ ROC AUC for each label:
    Crater: AUC = 0.9482
    Waves: AUC = 0.8598
 Average inference time per sample: 2.35 ms
+
+--- Epoch 20, Model: greyscale_testrun_run_5 ---
+Mean Label Accuracy: 69.22%
+Mean Label F1 Score: 0.3833
+Instance (Exact Match) Accuracy: 35.29%
+Per-Label Metrics:
+   Good_layer: Accuracy = 52.16%, F1 = 0.0000, Balanced Acc = 49.63%, Balanced Precision = 0.0000, Balanced Recall = 0.0000
+   Ditch: Accuracy = 92.16%, F1 = 0.7368, Balanced Acc = 79.55%, Balanced Precision = 0.9655, Balanced Recall = 0.5957
+   Crater: Accuracy = 47.45%, F1 = 0.5563, Balanced Acc = 60.82%, Balanced Precision = 0.3853, Balanced Recall = 1.0000
+   Waves: Accuracy = 85.10%, F1 = 0.2400, Balanced Acc = 62.89%, Balanced Precision = 0.1765, Balanced Recall = 0.3750
+ROC AUC for each label:
+   Good_layer: AUC = 0.5815
+   Ditch: AUC = 0.9416
+   Crater: AUC = 0.9482
+   Waves: AUC = 0.8598
+Average inference time per sample: 7.73 ms
