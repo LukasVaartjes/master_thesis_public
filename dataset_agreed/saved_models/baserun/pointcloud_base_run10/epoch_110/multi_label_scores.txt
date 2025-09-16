@@ -1,0 +1,136 @@
+
+--- Epoch 110, Model: pointcloud_base_run10 ---
+2025-09-16 22:25:48.649451---
+nr of inputpoints 2048---
+Mean Label Accuracy: 94.22%
+Mean Label F1 Score: 0.8959
+Instance (Exact Match) Accuracy: 86.67%
+Per-Label Metrics:
+   Good_layer: Accuracy = 90.59%, F1 = 0.8974, Balanced Acc = 90.40%, Balanced Precision = 0.9292, Balanced Recall = 0.8678
+   Ditch: Accuracy = 94.12%, F1 = 0.8485, Balanced Acc = 92.28%, Balanced Precision = 0.8077, Balanced Recall = 0.8936
+   Crater: Accuracy = 92.94%, F1 = 0.8966, Balanced Acc = 92.92%, Balanced Precision = 0.8667, Balanced Recall = 0.9286
+   Waves: Accuracy = 99.22%, F1 = 0.9412, Balanced Acc = 99.58%, Balanced Precision = 0.8889, Balanced Recall = 1.0000
+ROC AUC for each label:
+   Good_layer: AUC = 0.9800
+   Ditch: AUC = 0.9864
+   Crater: AUC = 0.9806
+   Waves: AUC = 1.0000
+
+--- Epoch 110, Model: pointcloud_base_run10 ---
+2025-09-16 22:26:25.893522---
+nr of inputpoints 2048---
+Mean Label Accuracy: 94.61%
+Mean Label F1 Score: 0.8985
+Instance (Exact Match) Accuracy: 87.06%
+Per-Label Metrics:
+   Good_layer: Accuracy = 91.76%, F1 = 0.9106, Balanced Acc = 91.60%, Balanced Precision = 0.9386, Balanced Recall = 0.8843
+   Ditch: Accuracy = 95.29%, F1 = 0.8800, Balanced Acc = 94.65%, Balanced Precision = 0.8302, Balanced Recall = 0.9362
+   Crater: Accuracy = 92.55%, F1 = 0.8889, Balanced Acc = 92.02%, Balanced Precision = 0.8736, Balanced Recall = 0.9048
+   Waves: Accuracy = 98.82%, F1 = 0.9143, Balanced Acc = 99.37%, Balanced Precision = 0.8421, Balanced Recall = 1.0000
+ROC AUC for each label:
+   Good_layer: AUC = 0.9758
+   Ditch: AUC = 0.9841
+   Crater: AUC = 0.9756
+   Waves: AUC = 1.0000
+
+--- Epoch 110, Model: pointcloud_base_run10 ---
+2025-09-16 22:36:39.983666---
+nr of inputpoints 2048---
+Mean Label Accuracy: 94.61%
+Mean Label F1 Score: 0.8979
+Instance (Exact Match) Accuracy: 87.45%
+Per-Label Metrics:
+   Good_layer: Accuracy = 91.37%, F1 = 0.9068, Balanced Acc = 91.23%, Balanced Precision = 0.9304, Balanced Recall = 0.8843
+   Ditch: Accuracy = 95.29%, F1 = 0.8776, Balanced Acc = 93.82%, Balanced Precision = 0.8431, Balanced Recall = 0.9149
+   Crater: Accuracy = 92.94%, F1 = 0.8929, Balanced Acc = 92.01%, Balanced Precision = 0.8929, Balanced Recall = 0.8929
+   Waves: Accuracy = 98.82%, F1 = 0.9143, Balanced Acc = 99.37%, Balanced Precision = 0.8421, Balanced Recall = 1.0000
+ROC AUC for each label:
+   Good_layer: AUC = 0.9846
+   Ditch: AUC = 0.9825
+   Crater: AUC = 0.9807
+   Waves: AUC = 1.0000
+
+--- Epoch 110, Model: pointcloud_base_run10 ---
+2025-09-16 22:37:17.670772---
+nr of inputpoints 2048---
+Mean Label Accuracy: 94.02%
+Mean Label F1 Score: 0.8866
+Instance (Exact Match) Accuracy: 85.88%
+Per-Label Metrics:
+   Good_layer: Accuracy = 90.98%, F1 = 0.9030, Balanced Acc = 90.86%, Balanced Precision = 0.9224, Balanced Recall = 0.8843
+   Ditch: Accuracy = 94.12%, F1 = 0.8454, Balanced Acc = 91.45%, Balanced Precision = 0.8200, Balanced Recall = 0.8723
+   Crater: Accuracy = 92.16%, F1 = 0.8837, Balanced Acc = 91.73%, Balanced Precision = 0.8636, Balanced Recall = 0.9048
+   Waves: Accuracy = 98.82%, F1 = 0.9143, Balanced Acc = 99.37%, Balanced Precision = 0.8421, Balanced Recall = 1.0000
+ROC AUC for each label:
+   Good_layer: AUC = 0.9786
+   Ditch: AUC = 0.9822
+   Crater: AUC = 0.9804
+   Waves: AUC = 0.9995
+
+--- Epoch 110, Model: pointcloud_base_run10 ---
+2025-09-16 22:47:49.968947---
+nr of inputpoints 2048---
+Mean Label Accuracy: 95.00%
+Mean Label F1 Score: 0.9077
+Instance (Exact Match) Accuracy: 88.24%
+Per-Label Metrics:
+   Good_layer: Accuracy = 92.55%, F1 = 0.9185, Balanced Acc = 92.35%, Balanced Precision = 0.9554, Balanced Recall = 0.8843
+   Ditch: Accuracy = 94.51%, F1 = 0.8654, Balanced Acc = 94.99%, Balanced Precision = 0.7895, Balanced Recall = 0.9574
+   Crater: Accuracy = 93.73%, F1 = 0.9059, Balanced Acc = 93.20%, Balanced Precision = 0.8953, Balanced Recall = 0.9167
+   Waves: Accuracy = 99.22%, F1 = 0.9412, Balanced Acc = 99.58%, Balanced Precision = 0.8889, Balanced Recall = 1.0000
+ROC AUC for each label:
+   Good_layer: AUC = 0.9776
+   Ditch: AUC = 0.9784
+   Crater: AUC = 0.9744
+   Waves: AUC = 1.0000
+
+--- Epoch 110, Model: pointcloud_base_run10 ---
+2025-09-16 22:48:47.294162---
+nr of inputpoints 2048---
+Mean Label Accuracy: 94.80%
+Mean Label F1 Score: 0.9007
+Instance (Exact Match) Accuracy: 87.45%
+Per-Label Metrics:
+   Good_layer: Accuracy = 92.16%, F1 = 0.9145, Balanced Acc = 91.98%, Balanced Precision = 0.9469, Balanced Recall = 0.8843
+   Ditch: Accuracy = 94.90%, F1 = 0.8713, Balanced Acc = 94.40%, Balanced Precision = 0.8148, Balanced Recall = 0.9362
+   Crater: Accuracy = 93.33%, F1 = 0.9029, Balanced Acc = 93.52%, Balanced Precision = 0.8681, Balanced Recall = 0.9405
+   Waves: Accuracy = 98.82%, F1 = 0.9143, Balanced Acc = 99.37%, Balanced Precision = 0.8421, Balanced Recall = 1.0000
+ROC AUC for each label:
+   Good_layer: AUC = 0.9772
+   Ditch: AUC = 0.9858
+   Crater: AUC = 0.9806
+   Waves: AUC = 1.0000
+
+--- Epoch 110, Model: pointcloud_base_run10 ---
+2025-09-16 22:59:14.629296---
+nr of inputpoints 2048---
+Mean Label Accuracy: 93.73%
+Mean Label F1 Score: 0.8814
+Instance (Exact Match) Accuracy: 85.10%
+Per-Label Metrics:
+   Good_layer: Accuracy = 90.20%, F1 = 0.8927, Balanced Acc = 89.99%, Balanced Precision = 0.9286, Balanced Recall = 0.8595
+   Ditch: Accuracy = 93.33%, F1 = 0.8283, Balanced Acc = 90.97%, Balanced Precision = 0.7885, Balanced Recall = 0.8723
+   Crater: Accuracy = 92.55%, F1 = 0.8902, Balanced Acc = 92.32%, Balanced Precision = 0.8652, Balanced Recall = 0.9167
+   Waves: Accuracy = 98.82%, F1 = 0.9143, Balanced Acc = 99.37%, Balanced Precision = 0.8421, Balanced Recall = 1.0000
+ROC AUC for each label:
+   Good_layer: AUC = 0.9770
+   Ditch: AUC = 0.9813
+   Crater: AUC = 0.9754
+   Waves: AUC = 1.0000
+
+--- Epoch 110, Model: pointcloud_base_run10 ---
+2025-09-16 23:00:35.834239---
+nr of inputpoints 2048---
+Mean Label Accuracy: 93.73%
+Mean Label F1 Score: 0.8785
+Instance (Exact Match) Accuracy: 85.10%
+Per-Label Metrics:
+   Good_layer: Accuracy = 90.59%, F1 = 0.8966, Balanced Acc = 90.36%, Balanced Precision = 0.9369, Balanced Recall = 0.8595
+   Ditch: Accuracy = 94.12%, F1 = 0.8515, Balanced Acc = 93.10%, Balanced Precision = 0.7963, Balanced Recall = 0.9149
+   Crater: Accuracy = 91.76%, F1 = 0.8772, Balanced Acc = 91.13%, Balanced Precision = 0.8621, Balanced Recall = 0.8929
+   Waves: Accuracy = 98.43%, F1 = 0.8889, Balanced Acc = 99.16%, Balanced Precision = 0.8000, Balanced Recall = 1.0000
+ROC AUC for each label:
+   Good_layer: AUC = 0.9757
+   Ditch: AUC = 0.9826
+   Crater: AUC = 0.9744
+   Waves: AUC = 1.0000
