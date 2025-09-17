@@ -1,0 +1,17 @@
+
+--- Epoch 140, Model: pointcloud_HPO_1024_run8 ---
+2025-09-17 14:11:33.851205---
+nr of inputpoints 1024---
+Mean Label Accuracy: 94.61%
+Mean Label F1 Score: 0.8941
+Instance (Exact Match) Accuracy: 86.67%
+Per-Label Metrics:
+   Good_layer: Accuracy = 92.55%, F1 = 0.9212, Balanced Acc = 92.51%, Balanced Precision = 0.9250, Balanced Recall = 0.9174
+   Ditch: Accuracy = 93.33%, F1 = 0.8172, Balanced Acc = 88.50%, Balanced Precision = 0.8261, Balanced Recall = 0.8085
+   Crater: Accuracy = 93.33%, F1 = 0.8970, Balanced Acc = 92.00%, Balanced Precision = 0.9136, Balanced Recall = 0.8810
+   Waves: Accuracy = 99.22%, F1 = 0.9412, Balanced Acc = 99.58%, Balanced Precision = 0.8889, Balanced Recall = 1.0000
+ROC AUC for each label:
+   Good_layer: AUC = 0.9840
+   Ditch: AUC = 0.9815
+   Crater: AUC = 0.9795
+   Waves: AUC = 1.0000
