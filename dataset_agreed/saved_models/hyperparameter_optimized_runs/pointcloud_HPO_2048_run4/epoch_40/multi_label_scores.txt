@@ -1,17 +1,19 @@
 
 --- Epoch 40, Model: pointcloud_HPO_2048_run4 ---
-2025-09-17 08:33:18.289107---
+2025-09-19 13:28:20.412330---
 nr of inputpoints 2048---
-Mean Label Accuracy: 94.90%
-Mean Label F1 Score: 0.9066
-Instance (Exact Match) Accuracy: 88.24%
+Total inference time: 58.4713 seconds
+Average inference time per sample: 0.229299 seconds
+Mean Label Accuracy: 95.10%
+Mean Label F1 Score: 0.9022
+Instance (Exact Match) Accuracy: 87.84%
 Per-Label Metrics:
-   Good_layer: Accuracy = 91.76%, F1 = 0.9121, Balanced Acc = 91.68%, Balanced Precision = 0.9237, Balanced Recall = 0.9008
-   Ditch: Accuracy = 95.29%, F1 = 0.8723, Balanced Acc = 92.17%, Balanced Precision = 0.8723, Balanced Recall = 0.8723
-   Crater: Accuracy = 93.33%, F1 = 0.9006, Balanced Acc = 92.91%, Balanced Precision = 0.8851, Balanced Recall = 0.9167
-   Waves: Accuracy = 99.22%, F1 = 0.9412, Balanced Acc = 99.58%, Balanced Precision = 0.8889, Balanced Recall = 1.0000
+   Good_layer: Accuracy = 92.55%, F1 = 0.9212, Balanced Acc = 92.51%, Balanced Precision = 0.9250, Balanced Recall = 0.9174
+   Ditch: Accuracy = 94.90%, F1 = 0.8602, Balanced Acc = 91.11%, Balanced Precision = 0.8696, Balanced Recall = 0.8511
+   Crater: Accuracy = 94.12%, F1 = 0.9133, Balanced Acc = 94.10%, Balanced Precision = 0.8876, Balanced Recall = 0.9405
+   Waves: Accuracy = 98.82%, F1 = 0.9143, Balanced Acc = 99.37%, Balanced Precision = 0.8421, Balanced Recall = 1.0000
 ROC AUC for each label:
-   Good_layer: AUC = 0.9759
-   Ditch: AUC = 0.9831
-   Crater: AUC = 0.9833
-   Waves: AUC = 1.0000
+   Good_layer: AUC = 0.9835
+   Ditch: AUC = 0.9852
+   Crater: AUC = 0.9811
+   Waves: AUC = 0.9990
