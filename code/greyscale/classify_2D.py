@@ -19,6 +19,7 @@ import seaborn as sns
 from pathlib import Path
 import warnings
 import time
+import datetime
 
 warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 
@@ -108,35 +109,35 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
             probs = torch.sigmoid(output).cpu().detach().numpy()[0]
             
             initial_binary_predictions = (probs > 0.5).astype(int)
+            pred_binary_labels = initial_binary_predictions
+            # # Initialize binary prediction, will be adjusted by exclusive rule later on
+            # final_pred_binary_labels = np.zeros_like(initial_binary_predictions, dtype=int)
 
-            # Initialize binary prediction, will be adjusted by exclusive rule later on
-            final_pred_binary_labels = np.zeros_like(initial_binary_predictions, dtype=int)
+            # # Apply exclusive rule that good_layer does not occur with other defects
+            # # If any specific defect is predicted, good layer is 0, otherwise it is 1
+            # # or is set to 1 as a fallback if nothing else was predicted.
+            # try:
+            #     good_layer_idx = dataset.label_cols.index("Good_layer")
+            # except ValueError:
+            #     print("good layer label not found in column, skip exclusive rule application.")
+            #     final_pred_binary_labels = initial_binary_predictions
+            # else:
+            #     any_specific_defect_predicted = False
+            #     for j, label_name in enumerate(dataset.label_cols):
+            #         if j != good_layer_idx:
+            #             if initial_binary_predictions[j] == 1:
+            #                 final_pred_binary_labels[j] = 1
+            #                 any_specific_defect_predicted = True
 
-            # Apply exclusive rule that good_layer does not occur with other defects
-            # If any specific defect is predicted, good layer is 0, otherwise it is 1
-            # or is set to 1 as a fallback if nothing else was predicted.
-            try:
-                good_layer_idx = dataset.label_cols.index("Good_layer")
-            except ValueError:
-                print("good layer label not found in column, skip exclusive rule application.")
-                final_pred_binary_labels = initial_binary_predictions
-            else:
-                any_specific_defect_predicted = False
-                for j, label_name in enumerate(dataset.label_cols):
-                    if j != good_layer_idx:
-                        if initial_binary_predictions[j] == 1:
-                            final_pred_binary_labels[j] = 1
-                            any_specific_defect_predicted = True
-
-                if any_specific_defect_predicted:
-                    final_pred_binary_labels[good_layer_idx] = 0
-                else:
-                    if initial_binary_predictions[good_layer_idx] == 1:
-                        final_pred_binary_labels[good_layer_idx] = 1
-                    else:
-                        final_pred_binary_labels[good_layer_idx] = 1 
+            #     if any_specific_defect_predicted:
+            #         final_pred_binary_labels[good_layer_idx] = 0
+            #     else:
+            #         if initial_binary_predictions[good_layer_idx] == 1:
+            #             final_pred_binary_labels[good_layer_idx] = 1
+            #         else:
+            #             final_pred_binary_labels[good_layer_idx] = 1 
                         
-            pred_binary_labels = final_pred_binary_labels
+            # pred_binary_labels = final_pred_binary_labels
 
             all_true_labels.append(true_labels.cpu().numpy()[0])
             all_predicted_probs.append(probs)
@@ -278,26 +279,34 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
     txt_output_path = epoch_output_dir / "multi_label_scores.txt"
     with open(txt_output_path, "a") as f:
         f.write(f"\n--- Epoch {epoch}, Model: {MODEL_NAME} ---\n")
+        f.write(f"{datetime.datetime.now()}---\n")
+        f.write(f"nr of inputpoints 150x150---\n")
+
+        total_inference_time = sum(inference_times)
+        avg_inference_time = np.mean(inference_times)
+        f.write(f"Total inference time: {total_inference_time:.4f} seconds\n")
+        f.write(f"Average inference time per sample: {avg_inference_time:.6f} seconds\n")
+        
         f.write(f"Mean Label Accuracy: {mean_label_accuracy:.2f}%\n")
         f.write(f"Mean Label F1 Score: {mean_label_f1:.4f}\n")
         f.write(f"Instance (Exact Match) Accuracy: {instance_accuracy:.2f}%\n")
-        f.write(f"Per-Label Metrics:\n")
+        
+        f.write("Per-Label Metrics:\n")
         for label_name, acc, f1 in zip(dataset.label_cols, per_label_accuracy, per_label_f1):
-            # Compute balanced metrics again for saving
-            true_for_label = all_true_labels[:, dataset.label_cols.index(label_name)]
-            pred_for_label = all_predicted_binary_labels[:, dataset.label_cols.index(label_name)]
+            idx = dataset.label_cols.index(label_name)
+            true_for_label = all_true_labels[:, idx]
+            pred_for_label = all_predicted_binary_labels[:, idx]
             bal_acc_lbl = balanced_accuracy_score(true_for_label, pred_for_label) * 100
             bal_prec_lbl = precision_score(true_for_label, pred_for_label, zero_division=0)
             bal_recall_lbl = recall_score(true_for_label, pred_for_label, zero_division=0)
-            
             f.write(f"   {label_name}: Accuracy = {acc:.2f}%, F1 = {f1:.4f}, "
                     f"Balanced Acc = {bal_acc_lbl:.2f}%, "
                     f"Balanced Precision = {bal_prec_lbl:.4f}, "
                     f"Balanced Recall = {bal_recall_lbl:.4f}\n")
+        
         f.write("ROC AUC for each label:\n")
         for label_name, data in roc_data.items():
             f.write(f"   {label_name}: AUC = {data['auc']:.4f}\n")
-        f.write(f"Average inference time per sample: {avg_inference_time*1000:.2f} ms\n")
 
     print(f"Evaluation results saved to {txt_output_path}")
 

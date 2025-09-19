@@ -1,34 +1,19 @@
 
 --- Epoch 40, Model: pointcloud_base_run2 ---
-2025-09-16 21:31:16.155334---
+2025-09-19 12:50:35.830611---
 nr of inputpoints 2048---
-Mean Label Accuracy: 94.12%
-Mean Label F1 Score: 0.8976
-Instance (Exact Match) Accuracy: 86.27%
+Total inference time: 54.3474 seconds
+Average inference time per sample: 0.213127 seconds
+Mean Label Accuracy: 94.51%
+Mean Label F1 Score: 0.9093
+Instance (Exact Match) Accuracy: 85.88%
 Per-Label Metrics:
    Good_layer: Accuracy = 90.59%, F1 = 0.8983, Balanced Acc = 90.44%, Balanced Precision = 0.9217, Balanced Recall = 0.8760
-   Ditch: Accuracy = 93.73%, F1 = 0.8333, Balanced Acc = 90.39%, Balanced Precision = 0.8163, Balanced Recall = 0.8511
-   Crater: Accuracy = 92.55%, F1 = 0.8889, Balanced Acc = 92.02%, Balanced Precision = 0.8736, Balanced Recall = 0.9048
+   Ditch: Accuracy = 96.08%, F1 = 0.8936, Balanced Acc = 93.48%, Balanced Precision = 0.8936, Balanced Recall = 0.8936
+   Crater: Accuracy = 91.76%, F1 = 0.8757, Balanced Acc = 90.83%, Balanced Precision = 0.8706, Balanced Recall = 0.8810
    Waves: Accuracy = 99.61%, F1 = 0.9697, Balanced Acc = 99.79%, Balanced Precision = 0.9412, Balanced Recall = 1.0000
 ROC AUC for each label:
-   Good_layer: AUC = 0.9689
-   Ditch: AUC = 0.9737
-   Crater: AUC = 0.9793
-   Waves: AUC = 0.9979
-
---- Epoch 40, Model: pointcloud_base_run2 ---
-2025-09-16 22:09:58.681353---
-nr of inputpoints 2048---
-Mean Label Accuracy: 95.29%
-Mean Label F1 Score: 0.9132
-Instance (Exact Match) Accuracy: 89.02%
-Per-Label Metrics:
-   Good_layer: Accuracy = 93.33%, F1 = 0.9283, Balanced Acc = 93.22%, Balanced Precision = 0.9483, Balanced Recall = 0.9091
-   Ditch: Accuracy = 96.08%, F1 = 0.8958, Balanced Acc = 94.30%, Balanced Precision = 0.8776, Balanced Recall = 0.9149
-   Crater: Accuracy = 92.55%, F1 = 0.8876, Balanced Acc = 91.72%, Balanced Precision = 0.8824, Balanced Recall = 0.8929
-   Waves: Accuracy = 99.22%, F1 = 0.9412, Balanced Acc = 99.58%, Balanced Precision = 0.8889, Balanced Recall = 1.0000
-ROC AUC for each label:
-   Good_layer: AUC = 0.9772
-   Ditch: AUC = 0.9851
-   Crater: AUC = 0.9794
-   Waves: AUC = 0.9984
+   Good_layer: AUC = 0.9736
+   Ditch: AUC = 0.9763
+   Crater: AUC = 0.9790
+   Waves: AUC = 0.9987

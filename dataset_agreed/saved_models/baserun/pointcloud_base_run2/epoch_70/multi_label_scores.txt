@@ -1,34 +1,19 @@
 
 --- Epoch 70, Model: pointcloud_base_run2 ---
-2025-09-16 21:33:24.684101---
+2025-09-19 12:53:24.702318---
 nr of inputpoints 2048---
-Mean Label Accuracy: 95.10%
-Mean Label F1 Score: 0.9057
-Instance (Exact Match) Accuracy: 88.63%
-Per-Label Metrics:
-   Good_layer: Accuracy = 92.55%, F1 = 0.9205, Balanced Acc = 92.47%, Balanced Precision = 0.9322, Balanced Recall = 0.9091
-   Ditch: Accuracy = 94.51%, F1 = 0.8511, Balanced Acc = 90.87%, Balanced Precision = 0.8511, Balanced Recall = 0.8511
-   Crater: Accuracy = 94.12%, F1 = 0.9102, Balanced Acc = 93.19%, Balanced Precision = 0.9157, Balanced Recall = 0.9048
-   Waves: Accuracy = 99.22%, F1 = 0.9412, Balanced Acc = 99.58%, Balanced Precision = 0.8889, Balanced Recall = 1.0000
-ROC AUC for each label:
-   Good_layer: AUC = 0.9769
-   Ditch: AUC = 0.9828
-   Crater: AUC = 0.9846
-   Waves: AUC = 0.9987
-
---- Epoch 70, Model: pointcloud_base_run2 ---
-2025-09-16 22:12:07.388803---
-nr of inputpoints 2048---
-Mean Label Accuracy: 94.71%
-Mean Label F1 Score: 0.9014
+Total inference time: 56.0741 seconds
+Average inference time per sample: 0.219898 seconds
+Mean Label Accuracy: 95.00%
+Mean Label F1 Score: 0.9053
 Instance (Exact Match) Accuracy: 87.84%
 Per-Label Metrics:
-   Good_layer: Accuracy = 91.37%, F1 = 0.9076, Balanced Acc = 91.27%, Balanced Precision = 0.9231, Balanced Recall = 0.8926
+   Good_layer: Accuracy = 91.37%, F1 = 0.9052, Balanced Acc = 91.15%, Balanced Precision = 0.9459, Balanced Recall = 0.8678
    Ditch: Accuracy = 94.51%, F1 = 0.8511, Balanced Acc = 90.87%, Balanced Precision = 0.8511, Balanced Recall = 0.8511
-   Crater: Accuracy = 93.73%, F1 = 0.9059, Balanced Acc = 93.20%, Balanced Precision = 0.8953, Balanced Recall = 0.9167
+   Crater: Accuracy = 94.90%, F1 = 0.9240, Balanced Acc = 94.68%, Balanced Precision = 0.9080, Balanced Recall = 0.9405
    Waves: Accuracy = 99.22%, F1 = 0.9412, Balanced Acc = 99.58%, Balanced Precision = 0.8889, Balanced Recall = 1.0000
 ROC AUC for each label:
-   Good_layer: AUC = 0.9716
-   Ditch: AUC = 0.9726
-   Crater: AUC = 0.9842
-   Waves: AUC = 0.9992
+   Good_layer: AUC = 0.9821
+   Ditch: AUC = 0.9735
+   Crater: AUC = 0.9907
+   Waves: AUC = 0.9987

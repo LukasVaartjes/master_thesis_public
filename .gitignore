@@ -5,3 +5,5 @@ code/create_dataset/filter_disagreement_samples.py
 code/create_dataset/count_pc.py
 code/visualizations/show_detrend.py
 code/visualizations/check_augmentation.py
+code/visualizations/statistical_testing.py
+code/visualizations/calculate_results_model.py

@@ -20,12 +20,13 @@ import seaborn as sns
 from pathlib import Path
 import warnings
 import datetime
+import time
 
 warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 
 # Global variables
 results = []
-MODEL_NAME = "pointcloud_run_1"
+MODEL_NAME = "pointcloud_base_run1"
 DATASET_DIR = "./dataset_agreed/"
 SAVE_MODEL_PATH = "./dataset_agreed/saved_models"
 SPLIT_OUTPUT_DIR = "split_output"
@@ -82,7 +83,8 @@ def classify_point_clouds(epoch):
     all_predicted_binary_labels = []
     counter = 1
     file_results_for_excel = []
-    
+    total_inference_time = 0.0
+
     # Disable gradient computation for inference to save memory
     with torch.no_grad():
         for i, (points, extra_features, true_labels, pc_file, _) in enumerate(dataloader):
@@ -95,37 +97,43 @@ def classify_point_clouds(epoch):
             points = points.to(device)
             extra_features = extra_features.to(device)
             true_labels = true_labels.to(device)
+            # Measure inference time
+            start_time = time.time()
             output = model(points, extra_features)
+            end_time = time.time()
+            inference_time = end_time - start_time
+            total_inference_time += inference_time
+            # Apply sigmoid to convert logits to probabilities
             # Apply sigmoid to convert logits to probabilities
             probs = torch.sigmoid(output).cpu().detach().numpy()[0]
             initial_binary_predictions = (probs > 0.5).astype(int)
-            # Initialize binary prediction, will be adjusted by exclusive rule later on
-            final_pred_binary_labels = np.zeros_like(initial_binary_predictions, dtype=int)
 
-            # Apply exclusive rule that good_layer does not occur with other defects
-            # If any specific defect is predicted, good layer is 0, otherwise it is 1
-            # or is set to 1 as a fallback if nothing else was predicted.
-            try:
-                good_layer_idx = dataset.label_cols.index("Good_layer")
-            except ValueError:
-                final_pred_binary_labels = initial_binary_predictions
-            else:
-                any_specific_defect_predicted = False
-                for j, label_name in enumerate(dataset.label_cols):
-                    if j != good_layer_idx:
-                        if initial_binary_predictions[j] == 1:
-                            final_pred_binary_labels[j] = 1
-                            any_specific_defect_predicted = True
+            # Use raw binary predictions directly (no exclusivity rule applied)
+            pred_binary_labels = initial_binary_predictions
 
-                if any_specific_defect_predicted:
-                    final_pred_binary_labels[good_layer_idx] = 0
-                else:
-                    if initial_binary_predictions[good_layer_idx] == 1:
-                        final_pred_binary_labels[good_layer_idx] = 1
-                    else:
-                        final_pred_binary_labels[good_layer_idx] = 1
+            # # Apply exclusive rule that good_layer does not occur with other defects
+            # # If any specific defect is predicted, good layer is 0, otherwise it is 1
+            # # or is set to 1 as a fallback if nothing else was predicted.
+            # try:
+            #     good_layer_idx = dataset.label_cols.index("Good_layer")
+            # except ValueError:
+            #     final_pred_binary_labels = initial_binary_predictions
+            # else:
+            #     any_specific_defect_predicted = False
+            #     for j, label_name in enumerate(dataset.label_cols):
+            #         if j != good_layer_idx:
+            #             if initial_binary_predictions[j] == 1:
+            #                 final_pred_binary_labels[j] = 1
+            #                 any_specific_defect_predicted = True
+
+            #     if any_specific_defect_predicted:
+            #         final_pred_binary_labels[good_layer_idx] = 0
+            #     else:
+            #         if initial_binary_predictions[good_layer_idx] == 1:
+            #             final_pred_binary_labels[good_layer_idx] = 1
+            #         else:
+            #             final_pred_binary_labels[good_layer_idx] = 1
                         
-            pred_binary_labels = final_pred_binary_labels
 
             all_true_labels.append(true_labels.cpu().numpy()[0])
             all_predicted_probs.append(probs)
@@ -242,7 +250,11 @@ def classify_point_clouds(epoch):
 
     output_dir = Path(f"{DATASET_DIR}/saved_models/{MODEL_NAME}/")
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
+    avg_inference_time = total_inference_time / len(dataset)
+    print(f"\nTotal inference time for {len(dataset)} samples: {total_inference_time:.4f} seconds")
+    print(f"Average inference time per sample: {avg_inference_time:.6f} seconds")
+
     # Save results to a text file
     # Save results to a text file
     txt_output_path = epoch_output_dir / "multi_label_scores.txt"
@@ -250,6 +262,8 @@ def classify_point_clouds(epoch):
         f.write(f"\n--- Epoch {epoch}, Model: {MODEL_NAME} ---\n")
         f.write(f"{datetime.datetime.now()}---\n")
         f.write(f"nr of inputpoints {NUM_POINTS}---\n")
+        f.write(f"Total inference time: {total_inference_time:.4f} seconds\n")
+        f.write(f"Average inference time per sample: {avg_inference_time:.6f} seconds\n")
         f.write(f"Mean Label Accuracy: {mean_label_accuracy:.2f}%\n")
         f.write(f"Mean Label F1 Score: {mean_label_f1:.4f}\n")
         f.write(f"Instance (Exact Match) Accuracy: {instance_accuracy:.2f}%\n")
@@ -302,7 +316,7 @@ def classify_point_clouds(epoch):
 if __name__ == "__main__":
     all_epochs_roc_data = [] 
     # Iterate through saved model checkpoints, they are saved every 10 epochs
-    for epoch in range(0, 101, 10):
+    for epoch in range(0, 151, 10):
         if not os.path.exists(f"{MODEL_PATH}model_epoch_{epoch}.pth"):
             continue
 
