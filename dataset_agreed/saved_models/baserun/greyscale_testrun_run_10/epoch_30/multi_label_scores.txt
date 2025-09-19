@@ -1,0 +1,19 @@
+
+--- Epoch 30, Model: greyscale_testrun_run_10 ---
+2025-09-19 16:03:22.900314---
+nr of inputpoints 150x150---
+Total inference time: 0.1217 seconds
+Average inference time per sample: 0.000477 seconds
+Mean Label Accuracy: 81.96%
+Mean Label F1 Score: 0.4581
+Instance (Exact Match) Accuracy: 56.47%
+Per-Label Metrics:
+   Good_layer: Accuracy = 72.16%, F1 = 0.7702, Balanced Acc = 73.43%, Balanced Precision = 0.6330, Balanced Recall = 0.9835
+   Ditch: Accuracy = 85.10%, F1 = 0.5581, Balanced Acc = 71.93%, Balanced Precision = 0.6154, Balanced Recall = 0.5106
+   Crater: Accuracy = 76.86%, F1 = 0.5042, Balanced Acc = 66.40%, Balanced Precision = 0.8571, Balanced Recall = 0.3571
+   Waves: Accuracy = 93.73%, F1 = 0.0000, Balanced Acc = 50.00%, Balanced Precision = 0.0000, Balanced Recall = 0.0000
+ROC AUC for each label:
+   Good_layer: AUC = 0.8860
+   Ditch: AUC = 0.8676
+   Crater: AUC = 0.9518
+   Waves: AUC = 0.9286

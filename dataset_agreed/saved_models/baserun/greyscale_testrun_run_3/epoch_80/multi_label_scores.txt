@@ -1,41 +1,14 @@
 
---- Epoch 80, Model: greyscale_run_3 ---
-Mean Label Accuracy: 95.29%
-Mean Label F1 Score: 0.9193
-Instance (Exact Match) Accuracy: 89.41%
-Per-Label Metrics:
-   Good_layer: Accuracy = 92.16%, F1 = 0.9123, Balanced Acc = 91.86%, Balanced Precision = 0.9720, Balanced Recall = 0.8595
-   Ditch: Accuracy = 95.29%, F1 = 0.8800, Balanced Acc = 94.65%, Balanced Precision = 0.8302, Balanced Recall = 0.9362
-   Crater: Accuracy = 94.12%, F1 = 0.9153, Balanced Acc = 94.71%, Balanced Precision = 0.8710, Balanced Recall = 0.9643
-   Waves: Accuracy = 99.61%, F1 = 0.9697, Balanced Acc = 99.79%, Balanced Precision = 0.9412, Balanced Recall = 1.0000
-ROC AUC for each label:
-   Good_layer: AUC = 0.9819
-   Ditch: AUC = 0.9916
-   Crater: AUC = 0.9857
-   Waves: AUC = 1.0000
-
---- Epoch 80, Model: greyscale_run_3 ---
-Mean Label Accuracy: 95.29%
-Mean Label F1 Score: 0.9193
-Instance (Exact Match) Accuracy: 89.41%
-Per-Label Metrics:
-   Good_layer: Accuracy = 92.16%, F1 = 0.9123, Balanced Acc = 91.86%, Balanced Precision = 0.9720, Balanced Recall = 0.8595
-   Ditch: Accuracy = 95.29%, F1 = 0.8800, Balanced Acc = 94.65%, Balanced Precision = 0.8302, Balanced Recall = 0.9362
-   Crater: Accuracy = 94.12%, F1 = 0.9153, Balanced Acc = 94.71%, Balanced Precision = 0.8710, Balanced Recall = 0.9643
-   Waves: Accuracy = 99.61%, F1 = 0.9697, Balanced Acc = 99.79%, Balanced Precision = 0.9412, Balanced Recall = 1.0000
-ROC AUC for each label:
-   Good_layer: AUC = 0.9819
-   Ditch: AUC = 0.9916
-   Crater: AUC = 0.9857
-   Waves: AUC = 1.0000
-Average inference time per sample: 5.46 ms
-
 --- Epoch 80, Model: greyscale_testrun_run_3 ---
-Mean Label Accuracy: 95.29%
-Mean Label F1 Score: 0.9193
-Instance (Exact Match) Accuracy: 89.41%
+2025-09-19 15:28:58.105762---
+nr of inputpoints 150x150---
+Total inference time: 0.1274 seconds
+Average inference time per sample: 0.000500 seconds
+Mean Label Accuracy: 95.00%
+Mean Label F1 Score: 0.9159
+Instance (Exact Match) Accuracy: 88.24%
 Per-Label Metrics:
-   Good_layer: Accuracy = 92.16%, F1 = 0.9123, Balanced Acc = 91.86%, Balanced Precision = 0.9720, Balanced Recall = 0.8595
+   Good_layer: Accuracy = 90.98%, F1 = 0.8987, Balanced Acc = 90.66%, Balanced Precision = 0.9623, Balanced Recall = 0.8430
    Ditch: Accuracy = 95.29%, F1 = 0.8800, Balanced Acc = 94.65%, Balanced Precision = 0.8302, Balanced Recall = 0.9362
    Crater: Accuracy = 94.12%, F1 = 0.9153, Balanced Acc = 94.71%, Balanced Precision = 0.8710, Balanced Recall = 0.9643
    Waves: Accuracy = 99.61%, F1 = 0.9697, Balanced Acc = 99.79%, Balanced Precision = 0.9412, Balanced Recall = 1.0000
@@ -44,4 +17,3 @@ ROC AUC for each label:
    Ditch: AUC = 0.9916
    Crater: AUC = 0.9857
    Waves: AUC = 1.0000
-Average inference time per sample: 5.71 ms

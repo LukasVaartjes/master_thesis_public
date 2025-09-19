@@ -14,9 +14,9 @@ from cnn_model_2d import SimpleImageCNN
 import csv
 
 # Constants and model settings
-MODEL_NAME = "greyscale_HPO_run_10"
+MODEL_NAME = "greyscale_testrun_run_6"
 DATASET_DIR = "./dataset_agreed/"
-SAVE_MODEL_PATH = "./dataset_agreed/saved_models"
+SAVE_MODEL_PATH = "./dataset_agreed/saved_models/baserun"
 SPLIT_OUTPUT_DIR = "split_output"
 TRAIN_DATA_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/train"
 TRAIN_DATA_DESCRIPTION_FILE = f"{TRAIN_DATA_DIR}/train_labels.xlsx"
@@ -24,7 +24,8 @@ VAL_IMAGE_DIR = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate"
 VAL_DESC = f"{DATASET_DIR}{SPLIT_OUTPUT_DIR}/validate/validate_labels.xlsx"
 EPOCHS = 150
 BATCH_SIZE = 32
-LR = 0.00013
+LR = 0.001
+# LR = 0.00013
 IMAGE_SIZE = (150, 150)
 # Number of output classes/labels
 NUM_LABELS = 4
@@ -139,7 +140,7 @@ def train_image_model():
     print(f"Model architecture: {model}")
 
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=0.00015)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=0.0001)
 
     #learning rate where it is reduced by 0.5 every 10 epochs
     scheduler = StepLR(optimizer, step_size=10, gamma=0.5)

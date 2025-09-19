@@ -1,32 +1,19 @@
 
 --- Epoch 110, Model: greyscale_testrun_run_4 ---
-Mean Label Accuracy: 94.31%
-Mean Label F1 Score: 0.9049
-Instance (Exact Match) Accuracy: 87.06%
+2025-09-19 15:29:10.690472---
+nr of inputpoints 150x150---
+Total inference time: 0.1213 seconds
+Average inference time per sample: 0.000476 seconds
+Mean Label Accuracy: 94.02%
+Mean Label F1 Score: 0.9012
+Instance (Exact Match) Accuracy: 85.10%
 Per-Label Metrics:
-   Good_layer: Accuracy = 90.59%, F1 = 0.8957, Balanced Acc = 90.32%, Balanced Precision = 0.9450, Balanced Recall = 0.8512
+   Good_layer: Accuracy = 89.41%, F1 = 0.8811, Balanced Acc = 89.08%, Balanced Precision = 0.9434, Balanced Recall = 0.8264
    Ditch: Accuracy = 94.51%, F1 = 0.8627, Balanced Acc = 94.16%, Balanced Precision = 0.8000, Balanced Recall = 0.9362
    Crater: Accuracy = 92.55%, F1 = 0.8914, Balanced Acc = 92.63%, Balanced Precision = 0.8571, Balanced Recall = 0.9286
    Waves: Accuracy = 99.61%, F1 = 0.9697, Balanced Acc = 99.79%, Balanced Precision = 0.9412, Balanced Recall = 1.0000
 ROC AUC for each label:
    Good_layer: AUC = 0.9768
    Ditch: AUC = 0.9918
-   Crater: AUC = 0.9800
+   Crater: AUC = 0.9801
    Waves: AUC = 0.9997
-Average inference time per sample: 2.25 ms
-
---- Epoch 110, Model: greyscale_testrun_run_4 ---
-Mean Label Accuracy: 94.31%
-Mean Label F1 Score: 0.9049
-Instance (Exact Match) Accuracy: 87.06%
-Per-Label Metrics:
-   Good_layer: Accuracy = 90.59%, F1 = 0.8957, Balanced Acc = 90.32%, Balanced Precision = 0.9450, Balanced Recall = 0.8512
-   Ditch: Accuracy = 94.51%, F1 = 0.8627, Balanced Acc = 94.16%, Balanced Precision = 0.8000, Balanced Recall = 0.9362
-   Crater: Accuracy = 92.55%, F1 = 0.8914, Balanced Acc = 92.63%, Balanced Precision = 0.8571, Balanced Recall = 0.9286
-   Waves: Accuracy = 99.61%, F1 = 0.9697, Balanced Acc = 99.79%, Balanced Precision = 0.9412, Balanced Recall = 1.0000
-ROC AUC for each label:
-   Good_layer: AUC = 0.9768
-   Ditch: AUC = 0.9918
-   Crater: AUC = 0.9800
-   Waves: AUC = 0.9997
-Average inference time per sample: 5.33 ms

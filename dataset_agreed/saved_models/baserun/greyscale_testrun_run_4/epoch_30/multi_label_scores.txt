@@ -1,32 +1,19 @@
 
 --- Epoch 30, Model: greyscale_testrun_run_4 ---
-Mean Label Accuracy: 91.57%
-Mean Label F1 Score: 0.8319
-Instance (Exact Match) Accuracy: 81.96%
+2025-09-19 15:29:03.687454---
+nr of inputpoints 150x150---
+Total inference time: 0.1319 seconds
+Average inference time per sample: 0.000517 seconds
+Mean Label Accuracy: 92.25%
+Mean Label F1 Score: 0.8369
+Instance (Exact Match) Accuracy: 79.22%
 Per-Label Metrics:
-   Good_layer: Accuracy = 84.71%, F1 = 0.8528, Balanced Acc = 85.13%, Balanced Precision = 0.7847, Balanced Recall = 0.9339
+   Good_layer: Accuracy = 87.45%, F1 = 0.8730, Balanced Acc = 87.62%, Balanced Precision = 0.8397, Balanced Recall = 0.9091
    Ditch: Accuracy = 94.12%, F1 = 0.8387, Balanced Acc = 89.81%, Balanced Precision = 0.8478, Balanced Recall = 0.8298
    Crater: Accuracy = 89.41%, F1 = 0.8212, Balanced Acc = 85.44%, Balanced Precision = 0.9254, Balanced Recall = 0.7381
    Waves: Accuracy = 98.04%, F1 = 0.8148, Balanced Acc = 84.38%, Balanced Precision = 1.0000, Balanced Recall = 0.6875
 ROC AUC for each label:
-   Good_layer: AUC = 0.9649
+   Good_layer: AUC = 0.9648
    Ditch: AUC = 0.9846
    Crater: AUC = 0.9784
    Waves: AUC = 0.9963
-Average inference time per sample: 2.15 ms
-
---- Epoch 30, Model: greyscale_testrun_run_4 ---
-Mean Label Accuracy: 91.57%
-Mean Label F1 Score: 0.8319
-Instance (Exact Match) Accuracy: 81.96%
-Per-Label Metrics:
-   Good_layer: Accuracy = 84.71%, F1 = 0.8528, Balanced Acc = 85.13%, Balanced Precision = 0.7847, Balanced Recall = 0.9339
-   Ditch: Accuracy = 94.12%, F1 = 0.8387, Balanced Acc = 89.81%, Balanced Precision = 0.8478, Balanced Recall = 0.8298
-   Crater: Accuracy = 89.41%, F1 = 0.8212, Balanced Acc = 85.44%, Balanced Precision = 0.9254, Balanced Recall = 0.7381
-   Waves: Accuracy = 98.04%, F1 = 0.8148, Balanced Acc = 84.38%, Balanced Precision = 1.0000, Balanced Recall = 0.6875
-ROC AUC for each label:
-   Good_layer: AUC = 0.9649
-   Ditch: AUC = 0.9846
-   Crater: AUC = 0.9784
-   Waves: AUC = 0.9963
-Average inference time per sample: 4.79 ms
