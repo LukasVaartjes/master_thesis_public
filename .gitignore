@@ -7,3 +7,7 @@ code/visualizations/show_detrend.py
 code/visualizations/check_augmentation.py
 code/visualizations/statistical_testing.py
 code/visualizations/calculate_results_model.py
+code/visualizations/compare_main_discarded_run.py
+code/pointcloud/classify_disagreement_pointcloud.py
+code/greyscale/classify_disagreement_2D.py
+code/create_dataset/create_disagreed_dataset.py
