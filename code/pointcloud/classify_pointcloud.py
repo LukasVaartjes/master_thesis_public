@@ -203,6 +203,20 @@ def classify_point_clouds(epoch):
         plt.close()
         print(f"Confusion matrix for {label_name} saved to {cm_output_path}")
 
+        # Generate and save confusion matrix for each label
+        cm_normalized = confusion_matrix(true_for_label, pred_for_label, normalize='true')
+        plt.figure(figsize=(6, 5))
+        sns.heatmap(cm_normalized, annot=True, fmt='.2f', cmap='Blues', cbar=False,
+                    xticklabels=['0', '1'],
+                    yticklabels=['0', '1'])
+        plt.title(f'Confusion Matrix for {label_name} (Epoch {epoch})')
+        plt.xlabel('Predicted Label')
+        plt.ylabel('True Label')
+        cm_output_path = epoch_output_dir / f"confusion_matrix_normalized_{label_name}.png"
+        plt.savefig(cm_output_path)
+        plt.close()
+        print(f"Confusion matrix for {label_name} saved to {cm_output_path}")
+
     # Calculate overall mean metrics
     mean_label_accuracy = np.mean(per_label_accuracy)
     mean_label_f1 = np.mean(per_label_f1)
@@ -234,6 +248,21 @@ def classify_point_clouds(epoch):
             for p in np.where(p_vec==1)[0]:
                 multi_label_cm[t,p] += 1
 
+    print("Multi-label confusion matrix (counts):")
+    print(multi_label_cm)
+
+    # normalize by row
+    row_sums = multi_label_cm.sum(axis=1, keepdims=True)
+    multi_label_cm_normalized = np.divide(
+        multi_label_cm, row_sums, 
+        out=np.zeros_like(multi_label_cm, dtype=float), 
+        where=row_sums != 0
+    )
+
+    # Print normalized multi-label confusion matrix
+    print("Normalized multi-label confusion matrix:")
+    print(np.round(multi_label_cm_normalized, 4))
+
     plt.figure(figsize=(8,6))
     sns.heatmap(multi_label_cm, annot=True, fmt='d', cmap='Blues',
                 xticklabels=dataset.label_cols, yticklabels=dataset.label_cols)
@@ -257,31 +286,31 @@ def classify_point_clouds(epoch):
 
     # Save results to a text file
     # Save results to a text file
-    txt_output_path = epoch_output_dir / "multi_label_scores.txt"
-    with open(txt_output_path, "a") as f:
-        f.write(f"\n--- Epoch {epoch}, Model: {MODEL_NAME} ---\n")
-        f.write(f"{datetime.datetime.now()}---\n")
-        f.write(f"nr of inputpoints {NUM_POINTS}---\n")
-        f.write(f"Total inference time: {total_inference_time:.4f} seconds\n")
-        f.write(f"Average inference time per sample: {avg_inference_time:.6f} seconds\n")
-        f.write(f"Mean Label Accuracy: {mean_label_accuracy:.2f}%\n")
-        f.write(f"Mean Label F1 Score: {mean_label_f1:.4f}\n")
-        f.write(f"Instance (Exact Match) Accuracy: {instance_accuracy:.2f}%\n")
-        f.write("Per-Label Metrics:\n")
-        for label_name, acc, f1 in zip(dataset.label_cols, per_label_accuracy, per_label_f1):
-            idx = dataset.label_cols.index(label_name)
-            true_for_label = all_true_labels[:, idx]
-            pred_for_label = all_predicted_binary_labels[:, idx]
-            bal_acc_lbl = balanced_accuracy_score(true_for_label, pred_for_label) * 100
-            bal_prec_lbl = precision_score(true_for_label, pred_for_label, zero_division=0)
-            bal_recall_lbl = recall_score(true_for_label, pred_for_label, zero_division=0)
-            f.write(f"   {label_name}: Accuracy = {acc:.2f}%, F1 = {f1:.4f}, "
-                    f"Balanced Acc = {bal_acc_lbl:.2f}%, "
-                    f"Balanced Precision = {bal_prec_lbl:.4f}, "
-                    f"Balanced Recall = {bal_recall_lbl:.4f}\n")
-        f.write("ROC AUC for each label:\n")
-        for l, data in roc_data.items():
-            f.write(f"   {l}: AUC = {data['auc']:.4f}\n")
+    # txt_output_path = epoch_output_dir / "multi_label_scores.txt"
+    # with open(txt_output_path, "a") as f:
+    #     f.write(f"\n--- Epoch {epoch}, Model: {MODEL_NAME} ---\n")
+    #     f.write(f"{datetime.datetime.now()}---\n")
+    #     f.write(f"nr of inputpoints {NUM_POINTS}---\n")
+    #     f.write(f"Total inference time: {total_inference_time:.4f} seconds\n")
+    #     f.write(f"Average inference time per sample: {avg_inference_time:.6f} seconds\n")
+    #     f.write(f"Mean Label Accuracy: {mean_label_accuracy:.2f}%\n")
+    #     f.write(f"Mean Label F1 Score: {mean_label_f1:.4f}\n")
+    #     f.write(f"Instance (Exact Match) Accuracy: {instance_accuracy:.2f}%\n")
+    #     f.write("Per-Label Metrics:\n")
+    #     for label_name, acc, f1 in zip(dataset.label_cols, per_label_accuracy, per_label_f1):
+    #         idx = dataset.label_cols.index(label_name)
+    #         true_for_label = all_true_labels[:, idx]
+    #         pred_for_label = all_predicted_binary_labels[:, idx]
+    #         bal_acc_lbl = balanced_accuracy_score(true_for_label, pred_for_label) * 100
+    #         bal_prec_lbl = precision_score(true_for_label, pred_for_label, zero_division=0)
+    #         bal_recall_lbl = recall_score(true_for_label, pred_for_label, zero_division=0)
+    #         f.write(f"   {label_name}: Accuracy = {acc:.2f}%, F1 = {f1:.4f}, "
+    #                 f"Balanced Acc = {bal_acc_lbl:.2f}%, "
+    #                 f"Balanced Precision = {bal_prec_lbl:.4f}, "
+    #                 f"Balanced Recall = {bal_recall_lbl:.4f}\n")
+    #     f.write("ROC AUC for each label:\n")
+    #     for l, data in roc_data.items():
+    #         f.write(f"   {l}: AUC = {data['auc']:.4f}\n")
 
     print(f"Evaluation results saved to {txt_output_path}")
 

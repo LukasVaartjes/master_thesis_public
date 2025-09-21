@@ -25,7 +25,7 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
 
 # Global variables
 results = []
-MODEL_NAME = "greyscale_testrun_run_5"
+MODEL_NAME = "greyscale_testrun_run_1"
 DATASET_DIR = "./dataset_agreed"
 IMAGE_SIZE = (150,150)
 NUM_LABELS = 4
@@ -193,12 +193,28 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
           f"Balanced Recall = {bal_recall_lbl:.4f}")
         
         # Generate and save confusion matrix for each label
+        cm_normal = confusion_matrix(true_for_label, pred_for_label, normalize='true')
+        print(f"Normalized confusion matrix for {label_name}:\n{cm_normal}")
+        plt.figure(figsize=(6, 5))
+        sns.heatmap(cm_normal, annot=True, fmt='.2f', cmap='Blues', cbar=False,
+                    xticklabels=['0', '1'],
+                    yticklabels=['0', '1'])
+        plt.title(f'Confusion Matrix for {label_name} ')
+        plt.xlabel('Predicted Label')
+        plt.ylabel('True Label')
+        cm_output_path = epoch_output_dir / f"confusion_matrix_normalized_{label_name}.png"
+        plt.savefig(cm_output_path)
+        plt.close()
+        print(f"Confusion matrix for {label_name} saved to {cm_output_path}")
+
+        # Generate and save confusion matrix for each label
         cm = confusion_matrix(true_for_label, pred_for_label)
+        print(f"Confusion matrix for {label_name} (counts):\n{cm}")
         plt.figure(figsize=(6, 5))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False,
                     xticklabels=['0', '1'],
                     yticklabels=['0', '1'])
-        plt.title(f'Confusion Matrix for {label_name} (Epoch {epoch})')
+        plt.title(f'Confusion Matrix for {label_name} ')
         plt.xlabel('Predicted Label')
         plt.ylabel('True Label')
         cm_output_path = epoch_output_dir / f"confusion_matrix_{label_name}.png"
@@ -206,7 +222,6 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
         plt.close()
         print(f"Confusion matrix for {label_name} saved to {cm_output_path}")
 
-    #multilabel consufion mayrix
     num_labels = len(dataset.label_cols)
     multi_label_cm = np.zeros((num_labels, num_labels), dtype=int)
     for true_vec, pred_vec in zip(all_true_labels, all_predicted_binary_labels):
@@ -215,15 +230,30 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
         for t in true_indices:
             for p in pred_indices:
                 multi_label_cm[t, p] += 1
+    
+    print("Multi-label confusion matrix (counts):")
+    print(multi_label_cm)
 
+    # normalize by row
+    row_sums = multi_label_cm.sum(axis=1, keepdims=True)
+    multi_label_cm_normalized = np.divide(
+        multi_label_cm, row_sums, 
+        out=np.zeros_like(multi_label_cm, dtype=float), 
+        where=row_sums != 0
+    )
+
+    # Print normalized multi-label confusion matrix
+    print("Normalized multi-label confusion matrix:")
+    print(np.round(multi_label_cm_normalized, 4))
+    
     plt.figure(figsize=(8, 6))
-    sns.heatmap(multi_label_cm, annot=True, fmt='d', cmap='Blues',
+    sns.heatmap(multi_label_cm_normalized, annot=True, fmt='.2f', cmap='Blues',
                 xticklabels=dataset.label_cols,
                 yticklabels=dataset.label_cols)
     plt.xlabel('Predicted Label')
     plt.ylabel('True Label')
-    plt.title(f'Multi-label Confusion Matrix (Epoch {epoch})')
-    multi_label_cm_path = epoch_output_dir / "multi_label_confusion_matrix.png"
+    plt.title('Normalized Multi-label Confusion Matrix')
+    multi_label_cm_path = epoch_output_dir / "multi_label_confusion_matrix_normalized.png"
     plt.savefig(multi_label_cm_path)
     plt.close()
     print(f"Multi-label confusion matrix saved to {multi_label_cm_path}")
@@ -232,19 +262,19 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
     true_classes = np.argmax(all_true_labels, axis=1)
     pred_classes = np.argmax(all_predicted_binary_labels, axis=1)
 
-    multi_class_cm = confusion_matrix(true_classes, pred_classes)
+    # multi_class_cm = confusion_matrix(true_classes, pred_classes,normalize='true')
 
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(multi_class_cm, annot=True, fmt='d', cmap='Oranges',
-                xticklabels=dataset.label_cols,
-                yticklabels=dataset.label_cols)
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
-    plt.title(f'Multi-class Confusion Matrix (Epoch {epoch})')
-    multi_class_cm_path = epoch_output_dir / "multi_class_confusion_matrix.png"
-    plt.savefig(multi_class_cm_path)
-    plt.close()
-    print(f"Multi-class confusion matrix saved to {multi_class_cm_path}")
+    # plt.figure(figsize=(8, 6))
+    # sns.heatmap(multi_class_cm, annot=True, fmt='.2f', cmap='Oranges',
+    #             xticklabels=dataset.label_cols,
+    #             yticklabels=dataset.label_cols)
+    # plt.xlabel('Predicted')
+    # plt.ylabel('True')
+    # plt.title(f'Multi-class Confusion Matrix')
+    # multi_class_cm_path = epoch_output_dir / "multi_class_confusion_matrix_normalized.png"
+    # plt.savefig(multi_class_cm_path)
+    # plt.close()
+    # print(f"Multi-class confusion matrix saved to {multi_class_cm_path}")
 
     #calculate avg inference time per sample
     avg_inference_time = np.mean(inference_times)
@@ -277,36 +307,36 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
     
     # Save results to a text file
     txt_output_path = epoch_output_dir / "multi_label_scores.txt"
-    with open(txt_output_path, "a") as f:
-        f.write(f"\n--- Epoch {epoch}, Model: {MODEL_NAME} ---\n")
-        f.write(f"{datetime.datetime.now()}---\n")
-        f.write(f"nr of inputpoints 150x150---\n")
+    # with open(txt_output_path, "a") as f:
+    #     f.write(f"\n--- Epoch {epoch}, Model: {MODEL_NAME} ---\n")
+    #     f.write(f"{datetime.datetime.now()}---\n")
+    #     f.write(f"nr of inputpoints 150x150---\n")
 
-        total_inference_time = sum(inference_times)
-        avg_inference_time = np.mean(inference_times)
-        f.write(f"Total inference time: {total_inference_time:.4f} seconds\n")
-        f.write(f"Average inference time per sample: {avg_inference_time:.6f} seconds\n")
+    #     total_inference_time = sum(inference_times)
+    #     avg_inference_time = np.mean(inference_times)
+    #     f.write(f"Total inference time: {total_inference_time:.4f} seconds\n")
+    #     f.write(f"Average inference time per sample: {avg_inference_time:.6f} seconds\n")
         
-        f.write(f"Mean Label Accuracy: {mean_label_accuracy:.2f}%\n")
-        f.write(f"Mean Label F1 Score: {mean_label_f1:.4f}\n")
-        f.write(f"Instance (Exact Match) Accuracy: {instance_accuracy:.2f}%\n")
+    #     f.write(f"Mean Label Accuracy: {mean_label_accuracy:.2f}%\n")
+    #     f.write(f"Mean Label F1 Score: {mean_label_f1:.4f}\n")
+    #     f.write(f"Instance (Exact Match) Accuracy: {instance_accuracy:.2f}%\n")
         
-        f.write("Per-Label Metrics:\n")
-        for label_name, acc, f1 in zip(dataset.label_cols, per_label_accuracy, per_label_f1):
-            idx = dataset.label_cols.index(label_name)
-            true_for_label = all_true_labels[:, idx]
-            pred_for_label = all_predicted_binary_labels[:, idx]
-            bal_acc_lbl = balanced_accuracy_score(true_for_label, pred_for_label) * 100
-            bal_prec_lbl = precision_score(true_for_label, pred_for_label, zero_division=0)
-            bal_recall_lbl = recall_score(true_for_label, pred_for_label, zero_division=0)
-            f.write(f"   {label_name}: Accuracy = {acc:.2f}%, F1 = {f1:.4f}, "
-                    f"Balanced Acc = {bal_acc_lbl:.2f}%, "
-                    f"Balanced Precision = {bal_prec_lbl:.4f}, "
-                    f"Balanced Recall = {bal_recall_lbl:.4f}\n")
+    #     f.write("Per-Label Metrics:\n")
+    #     for label_name, acc, f1 in zip(dataset.label_cols, per_label_accuracy, per_label_f1):
+    #         idx = dataset.label_cols.index(label_name)
+    #         true_for_label = all_true_labels[:, idx]
+    #         pred_for_label = all_predicted_binary_labels[:, idx]
+    #         bal_acc_lbl = balanced_accuracy_score(true_for_label, pred_for_label) * 100
+    #         bal_prec_lbl = precision_score(true_for_label, pred_for_label, zero_division=0)
+    #         bal_recall_lbl = recall_score(true_for_label, pred_for_label, zero_division=0)
+    #         f.write(f"   {label_name}: Accuracy = {acc:.2f}%, F1 = {f1:.4f}, "
+    #                 f"Balanced Acc = {bal_acc_lbl:.2f}%, "
+    #                 f"Balanced Precision = {bal_prec_lbl:.4f}, "
+    #                 f"Balanced Recall = {bal_recall_lbl:.4f}\n")
         
-        f.write("ROC AUC for each label:\n")
-        for label_name, data in roc_data.items():
-            f.write(f"   {label_name}: AUC = {data['auc']:.4f}\n")
+    #     f.write("ROC AUC for each label:\n")
+    #     for label_name, data in roc_data.items():
+    #         f.write(f"   {label_name}: AUC = {data['auc']:.4f}\n")
 
     print(f"Evaluation results saved to {txt_output_path}")
 
@@ -325,7 +355,7 @@ def classify_images(MODEL_PATH, epoch, MODEL_NAME):
     
     writer = pd.ExcelWriter(excel_output_path, engine='xlsxwriter')
 
-    df_results.to_excel(writer, sheet_name='Predictions', index=False)
+    # df_results.to_excel(writer, sheet_name='Predictions', index=False)
 
     workbook = writer.book
     worksheet = writer.sheets['Predictions']
@@ -340,7 +370,7 @@ if __name__ == "__main__":
     all_epochs_roc_data = [] 
 
     # Iterate through saved model checkpoints, they are saved every 10 epochs
-    for epoch in range(0, 151, 10):
+    for epoch in range(40, 41, 10):
         MODEL_PATH = f"dataset_agreed/saved_models/baserun/{MODEL_NAME}/model_epoch_{epoch}.pth"
         # if model does not exist, skip
         if not os.path.exists(MODEL_PATH):
@@ -382,6 +412,6 @@ if __name__ == "__main__":
 
         output_dir = Path(f"{DATASET_DIR}/saved_models/baserun/{MODEL_NAME}/")
         os.makedirs(output_dir, exist_ok=True)
-        plt.savefig(os.path.join(output_dir, f"combined_roc_curve_{label_name}.png"))
+        # plt.savefig(os.path.join(output_dir, f"combined_roc_curve_{label_name}.png"))
         plt.show()
         plt.close()
